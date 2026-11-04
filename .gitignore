@@ -5,3 +5,4 @@ Thumbs.db
 .gh_user.json
 .npmrc
 *.tgz
+.publish-watch.sh
