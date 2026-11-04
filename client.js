@@ -80,7 +80,7 @@ body[data-ds-dark-theme] .ssp-root{
 .ssp-value{display:flex;align-items:baseline;gap:5px;min-width:0;margin-top:12px}
 .ssp-value-num{font-size:30px;font-weight:600;line-height:34px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ssp-value-unit{font-size:13px;color:var(--ssp-text-3);white-space:nowrap}
-.ssp-sub{margin-top:6px;font-size:12px;line-height:18px;color:var(--ssp-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ssp-sub{margin-top:6px;font-size:12px;line-height:18px;color:var(--ssp-text-3);white-space:normal;overflow-wrap:anywhere}
 .ssp-live{margin-top:14px;padding:18px 22px 16px}
 .ssp-live-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .ssp-live-title{display:flex;align-items:center;gap:10px;min-width:0}
@@ -208,6 +208,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"card.tokens.sub": "输入 {input} · 输出 {output}",
 			"card.cost": "预估成本",
 			"card.cost.sub": "各厂商官方价目 · DeepSeek 峰谷分时",
+			"card.cost.search": "含官方搜索 {count} 次 {cost}",
 			"card.cost.note": "未列价模型按 Flash 档估算（{count} 个）",
 			"card.cost.noteTitle": "未匹配到原厂官方价目的模型按 DeepSeek 官方 Flash 档估算，仅本地参考",
 			"vendor.deepseek": "DeepSeek",
@@ -236,6 +237,10 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"models.tag.unpriced": "未计价",
 			"models.unpriced": "未计价",
 			"models.unpricedNote": "{count} 个模型无官方定价，未计入金额（tokens {tokens}）",
+			"models.search": "官方搜索",
+			"models.searchTokens": "—",
+			"models.searchShare": "按次",
+			"models.searchTitle": "¥5 / 1000 次成功请求；搜索调用自身 token 未计入（日志无 usage）",
 			"card.sessions": "会话数",
 			"card.sessions.sub": "平均每会话 {avg} tokens",
 			"card.cache": "缓存命中率",
@@ -292,6 +297,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"card.tokens.sub": "Input {input} · Output {output}",
 			"card.cost": "Estimated cost",
 			"card.cost.sub": "Vendor official lists · DeepSeek peak / off-peak",
+			"card.cost.search": "incl. {count} official search(es) {cost}",
 			"card.cost.note": "{count} unlisted model(s) priced as Flash",
 			"card.cost.noteTitle": "Models with no verified vendor list price are estimated at the DeepSeek official Flash tier; local estimate only",
 			"vendor.deepseek": "DeepSeek",
@@ -320,6 +326,10 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"models.tag.unpriced": "Unpriced",
 			"models.unpriced": "Unpriced",
 			"models.unpricedNote": "{count} model(s) have no official price and are excluded from the amount (tokens {tokens})",
+			"models.search": "Official search",
+			"models.searchTokens": "—",
+			"models.searchShare": "per request",
+			"models.searchTitle": "¥5 per 1,000 successful requests; the search call's own tokens are not counted (no usage in the log)",
 			"card.sessions": "Sessions",
 			"card.sessions.sub": "{avg} tokens per session on average",
 			"card.cache": "Cache hit rate",
@@ -821,6 +831,8 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 				currency: model.currency ?? null,
 				color: model.color || otherColor,
 				tokens: Number(model.tokens) || 0,
+				costsOnly: model.costsOnly === true,
+				searches: Number(model.searches) || 0,
 				costCNY: Number(model.costCNY) || 0,
 				costUSD: Number(model.costUSD) || 0,
 				routes: [String(model.route ?? model.model ?? "")],
@@ -1154,6 +1166,36 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 						),
 					),
 				);
+			// Search is billed per request and carries no tokens: it is listed in
+			// this table only, never in the token donut / stacked bars.
+			const searchRows = (Array.isArray(models) ? models : [])
+				.filter((model) => model.costsOnly === true)
+				.map((model) =>
+					h(
+						"div",
+						{ className: "ssp-model-row ssp-model-row-search", key: model.route },
+						h(
+							"div",
+							{ className: "ssp-model-identity" },
+							h(ColorChip, { color: model.color || otherColor, className: "ssp-model-dot" }),
+							h("span", { className: "ssp-model-name", title: t("models.searchTitle") }, t("models.search")),
+							h(
+								"span",
+								{ className: "ssp-model-provider" },
+								"· " + vendorLabelOf(t, { vendor: model.vendor, provider: model.provider }),
+							),
+						),
+						h("div", { className: "ssp-model-bar" }),
+						h("div", { className: "ssp-model-tokens" }, t("models.searchTokens")),
+						h("div", { className: "ssp-model-share" }, t("models.searchShare")),
+						h(
+							"div",
+							{ className: "ssp-model-cost", title: t("models.searchTitle") },
+							`${symbol}${formatMoney(currency === "CNY" ? model.costCNY : model.costUSD)}`,
+						),
+					),
+				);
+			const bodyRows = [...rows, ...searchRows];
 			return h(
 				"section",
 				{ className: "ssp-card ssp-models", "aria-label": t("models.title") },
@@ -1170,7 +1212,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 				h(
 					"div",
 					{ className: "ssp-model-table" },
-					rows.length > 0
+					bodyRows.length > 0
 						? [
 								h(
 									"div",
@@ -1181,7 +1223,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 									h("div", { className: "ssp-model-share" }, t("models.colShare")),
 									h("div", { className: "ssp-model-cost" }, t("models.colCost")),
 								),
-								...rows,
+								...bodyRows,
 							]
 						: h("div", { className: "ssp-card-sub" }, placeholder),
 				),
@@ -1215,9 +1257,17 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			const symbol = currency === "CNY" ? "¥" : "$";
 			const placeholder = t("state.placeholder");
 			const costOf = (target) => (currency === "CNY" ? target.costCNY : target.costUSD);
+			// The cost card shows token cost plus flat official-search cost.
+			const totalCostOf = (target) => {
+				const cny = Number(target.costCNYTotal ?? target.costCNY) || 0;
+				const rate = Number(data?.currency?.usdRate) > 0 ? Number(data.currency.usdRate) : 7.1;
+				return currency === "CNY" ? cny : cny / rate;
+			};
 			const models = data !== null && Array.isArray(data.models) ? data.models : [];
 			const otherColor = data !== null && typeof data.otherModelColor === "string" ? data.otherModelColor : "#868e96";
 			const otherLabel = t("chart.other");
+			const searches = totals === null ? 0 : Number(totals.searches) || 0;
+			const searchCost = totals === null ? 0 : Number(totals.searchCostCNY) || 0;
 			const unpricedModels = models.filter((model) => model.priceLevel === "unpriced").length;
 			const unpricedTokens = models
 				.filter((model) => model.priceLevel === "unpriced")
@@ -1318,9 +1368,19 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 						h(StatCard, {
 							icon: h(CostIcon, { size: 14 }),
 							title: t("card.cost"),
-							value: totals === null ? placeholder : `${symbol}${formatMoney(costOf(totals))}`,
+							value: totals === null ? placeholder : `${symbol}${formatMoney(totalCostOf(totals))}`,
 							unit: null,
-							sub: totals === null ? placeholder : t("card.cost.sub"),
+							sub:
+								totals === null
+									? placeholder
+									: searches > 0
+										? t("card.cost.sub") +
+											" · " +
+											t("card.cost.search", {
+												count: searches,
+												cost: `${symbol}${formatMoney(searchCost)}`,
+											})
+										: t("card.cost.sub"),
 						}),
 						h(StatCard, {
 							icon: h(SessionsIcon, { size: 14 }),

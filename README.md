@@ -213,6 +213,29 @@ MiMo→小米、LongCat→美团。转售/聚合平台价（OpenCode Zen 等）�
 > `OFFICIAL_PRICE_TABLE`（`PRICE_TABLE_VERSION` 会出现在响应里便于排查）。
 > 已核验数字都带 `sourceUrl` + `verifiedAt: "2026-11-04"`。
 
+## 官方搜索（server-tool-search）
+
+DSH 的联网搜索走 `dsh-web-search-deepseek`，**每次搜索是一次独立 API 调用**，并在会话日志里留下一条
+`web/deepseek-search-llm-request` 事件。计费单位是**这条事件**（每个 query 一次请求），不是
+`tool/call` 里的 `web_search`（实测同会话 85 条搜索请求事件 vs 30 条 tool/call，数错会少算）。
+
+- 官方价目：**Search 每 1,000 次成功请求 ¥5**，即 **¥0.005 / 次**，平铺（不参与峰谷、不做汇率折算）。
+  来源：<https://api-docs.deepseek.com/zh-cn/quick_start/pricing>（抓取日 2026-11-05）。
+- **Fetch 不统计**：DSH 的 `web_fetch` 是本地直连，不走 DeepSeek Fetch API，不产生费用。
+- 搜索调用自身的 token（那次 `deepseek-v4-flash` 的 messages 调用）**日志里没有 usage**，本地无法还原
+  token 费用，只能统计「按次费用」；因此看板金额与平台账单可能不完全一致，UI 已如实标注。
+
+响应字段：
+
+- `totals.searches` / `totals.searchCostCNY`；`totals.costCNYTotal = totals.costCNY + totals.searchCostCNY`
+  （`costCNY` 仍是纯 token 成本，`costCNYWithSearch` 与 `costCNYTotal` 同值）。
+- `daily[].searches` / `daily[].searchCostCNY`。
+- `models[]` 末尾追加合成行（有搜索时才出现）：
+  `{ route: "official/server-tool-search", label: "官方搜索", vendor: "deepseek", priceLevel: "official",
+     tokens: 0, costsOnly: true, searches: N, costCNY, shareByCost }`。它**不会**进入环形图/堆叠柱
+  （0 token 会让占比失真），只出现在「分模型明细」表与成本卡副行。
+- `pricing.search = { unit: "per-request", priceCNY: 0.005, note: "¥5 / 1000 次成功请求" }`。
+
 ## 配置项（`cordis.patch.yml` 的 `config`，全部可选）
 
 | 键 | 默认 | 说明 |
@@ -248,7 +271,8 @@ MiMo→小米、LongCat→美团。转售/聚合平台价（OpenCode Zen 等）�
               "costCNY": 47.48, "costUSD": 6.69,
               "cacheHitRate": 0.99556, "sessions": 22, "avgTokensPerSession": 34768182,
               "pricedTokens": 714900000, "unpricedTokens": 50000000, "priced": false,
-              "unpricedModels": 1, "events": 1234 },
+              "unpricedModels": 1, "searches": 3, "searchCostCNY": 0.015,
+              "costCNYTotal": 51.815, "costCNYWithSearch": 51.815, "events": 1234 },
   "pricing": { "tableVersion": "vendor-official-2026-11", "peakMultiplier": 2,
                "peakEvents": 10, "offPeakEvents": 4, "mode": "mixed", "holidays": [],
                "usdRate": 7.1,

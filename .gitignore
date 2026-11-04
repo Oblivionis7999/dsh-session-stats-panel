@@ -6,3 +6,6 @@ Thumbs.db
 .npmrc
 *.tgz
 .publish-watch.sh
+.publish-from-token.sh
+.auth-url.txt
+.publish.log

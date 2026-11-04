@@ -297,6 +297,7 @@ const SAMPLE_MODELS = [
   { provider: "deepseek", model: "deepseek-v4-pro", route: "deepseek/deepseek-v4-pro", label: "deepseek-v4-pro", color: PALETTE[1], tokens: 150_000_000, costCNY: 7.48, costUSD: 1.053521, share: 150 / 764.9, events: 2, priced: true, priceKey: "deepseek-v4-pro", vendor: "deepseek", priceLevel: "official", sourceUrl: "https://api-docs.deepseek.com/zh-cn/quick_start/pricing" },
   { provider: "opencode-go", model: "kimi-k3", route: "opencode-go/kimi-k3", label: "kimi-k3", color: PALETTE[2], tokens: 50_000_000, costCNY: 10, costUSD: 1.408451, share: 50 / 764.9, events: 5, priced: true, priceKey: "kimi-k3", vendor: "moonshot", priceLevel: "official", sourceUrl: "https://platform.kimi.com/docs/pricing/chat" },
   { provider: "opencode-go", model: "claude-opus-4.1", route: "opencode-go/claude-opus-4.1", label: "claude-opus-4.1", color: PALETTE[3], tokens: 44_900_000, costCNY: 0, costUSD: 0, share: 44.9 / 764.9, events: 1, priced: false, priceKey: null, vendor: "anthropic", priceLevel: "unpriced", sourceUrl: null },
+  { provider: "official", model: "server-tool-search", route: "official/server-tool-search", label: "官方搜索", color: OTHER_COLOR, tokens: 0, costCNY: 0.02, costUSD: 0.002817, share: 0, shareByCost: 0.02 / 47.5, events: 0, priced: true, priceKey: "search:per-request", vendor: "deepseek", priceLevel: "official", costsOnly: true, searches: 4 },
 ];
 
 const FLASH_RATE = 30 / 520_000_000;
@@ -365,6 +366,10 @@ const SAMPLE_OVERVIEW = {
     unpricedTokens: 44_900_000,
     priced: false,
     unpricedModels: 1,
+    searches: 4,
+    searchCostCNY: 0.02,
+    costCNYTotal: 47.5,
+    costCNYWithSearch: 47.5,
     events: 1234,
   },
   pricing: { tableVersion: "vendor-official-2026-11", peakMultiplier: 2, peakEvents: 10, offPeakEvents: 4, mode: "mixed", holidays: [], usdRate: 7.1, officialLists: ["vendor-official"], priceLevels: { official: 3, unpriced: 1 } },
@@ -435,8 +440,9 @@ check(
     assert.ok(readyText.includes("tokens"));
     assert.ok(readyText.includes("输入 3.38M · 输出 3.41M"), "input/output sub line");
     assert.ok(readyText.includes("预估成本"));
-    assert.ok(readyText.includes("¥47.48"), "CNY cost");
-    assert.ok(readyText.includes("各厂商官方价目 · DeepSeek 峰谷分时"), "vendor-official price sub line");
+    assert.ok(readyText.includes("¥47.50"), "CNY cost incl. official search");
+    assert.ok(readyText.some((value) => value.includes("各厂商官方价目 · DeepSeek 峰谷分时")), "vendor-official price sub line");
+    assert.ok(readyText.some((value) => value.includes("含官方搜索 4 次 ¥0.02")), "official search sub line");
     assert.ok(readyText.includes("会话数"));
     assert.ok(readyText.includes("22"), "session count");
     assert.ok(readyText.includes("平均每会话 34.8M tokens"));
@@ -523,15 +529,15 @@ check(
   () => {
     const legendRows = findElements(ready.tree, (node) => node.props.className === "ssp-model-legend-row");
     const detailRows = findElements(ready.tree, (node) => node.props.className === "ssp-model-row");
-    assert.equal(legendRows.length, SAMPLE_OVERVIEW.models.length);
-    assert.equal(detailRows.length, SAMPLE_OVERVIEW.models.length);
+    assert.equal(legendRows.length, SAMPLE_OVERVIEW.models.filter((model) => model.costsOnly !== true).length);
+    assert.equal(detailRows.length, SAMPLE_OVERVIEW.models.filter((model) => model.costsOnly !== true).length);
     const detailText = renderText(detailRows);
     assert.ok(detailText.includes("deepseek-v4.1-flash"));
     assert.ok(detailText.includes("520M"));
     assert.ok(detailText.includes("44.9M"));
     assert.ok(readyText.includes("分模型明细"));
   },
-  "4 legend rows / 4 detail rows",
+  "4 legend rows / 5 detail rows",
 );
 
 check(
@@ -553,6 +559,26 @@ check(
     assert.ok(!usd.text.includes("¥47.48"), "CNY value hidden while USD is selected");
   },
   "$6.69",
+);
+
+check(
+  "official search row: tokens —, share 按次, per-request cost",
+  () => {
+    const rows = findElements(ready.tree, (node) => node.props.className === "ssp-model-row ssp-model-row-search");
+    assert.equal(rows.length, 1, "one synthetic search row");
+    const text = renderText(rows);
+    assert.ok(text.includes("官方搜索"), "label");
+    assert.ok(text.includes("· DeepSeek"), "vendor");
+    assert.ok(text.includes("—"), "tokens placeholder");
+    assert.ok(text.includes("按次"), "per-request share");
+    assert.ok(text.includes("¥0.02"), "search cost");
+    const titles = findElements(ready.tree, (node) => typeof node.props.title === "string").map((node) => node.props.title);
+    assert.ok(titles.some((value) => value.includes("¥5 / 1000 次成功请求")), "per-request tooltip");
+    // The 0-token row must never enter the token legend / donut.
+    const legend = renderText(findElements(ready.tree, (node) => node.props.className === "ssp-model-legend-row"));
+    assert.ok(!legend.includes("官方搜索"), "search row stays out of the legend");
+  },
+  "官方搜索 · — · 按次 · ¥0.02",
 );
 
 // Unpriced models are excluded from the amount and stated in the detail footer.

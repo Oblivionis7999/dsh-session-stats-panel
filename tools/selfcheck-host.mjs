@@ -64,6 +64,8 @@ const sessionA = {
     messageEvent({ seq: 2, time: NOW - 2 * HOUR, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 2 * M, output: 1 * M, cacheRead: 5 * M }),
     messageEvent({ seq: 3, time: NOW - 1 * HOUR, provider: "deepseek", model: "deepseek-v4-pro", input: 1 * M, output: 1 * M, cacheRead: 1 * M }),
     { type: "user/message", seq: 4, time: NOW, data: { turn: 1, message: { role: "user", content: [] } } },
+    { type: "web/deepseek-search-llm-request", seq: 5, time: NOW - 90 * 60_000, data: {} },
+    { type: "web/deepseek-search-llm-request", seq: 6, time: NOW - 60 * 60_000, data: {} },
   ],
 };
 const sessionB = {
@@ -72,6 +74,7 @@ const sessionB = {
   events: [
     messageEvent({ seq: 1, time: NOW - 4 * HOUR, provider: "anthropic", model: "claude-opus-4.1", input: 1 * M, output: 0.5 * M }),
     messageEvent({ seq: 2, time: NOW - 3.5 * HOUR, provider: "deepseek", model: "deepseek-v4-pro", input: 2 * M, output: 2 * M, cacheRead: 2 * M }),
+    { type: "web/deepseek-search-llm-request", seq: 3, time: NOW - 30 * 60_000, data: {} },
   ],
 };
 const sessions = new Map([
@@ -256,8 +259,11 @@ check(
       "pricedTokens",
       "unpricedTokens",
       "priced",
-      "unpricedTokens",
       "unpricedModels",
+      "searches",
+      "searchCostCNY",
+      "costCNYTotal",
+      "costCNYWithSearch",
       "events",
     ]) {
       assert.ok(key in totals, `totals.${key} is missing`);
@@ -271,6 +277,10 @@ check(
     assert.equal(totals.priced, false, "one model has no verified vendor price list");
     assert.equal(totals.unpricedTokens, 1.5 * M);
     assert.equal(totals.unpricedModels, 1);
+    assert.equal(totals.searches, 3);
+    assert.equal(totals.searchCostCNY, 0.015);
+    assert.equal(totals.costCNYTotal, totals.costCNY + 0.015);
+    assert.equal(totals.costCNYWithSearch, totals.costCNYTotal);
     assert.ok(totals.costCNY > 0);
     assert.ok(totals.cacheHitRate > 0 && totals.cacheHitRate < 1);
   },
@@ -301,11 +311,22 @@ check(
       for (const key of ["provider", "model", "route", "label", "color", "tokens", "costCNY", "costUSD", "share", "events", "priced", "priceKey", "vendor", "priceLevel", "sourceUrl"]) {
         assert.ok(key in model, `models.${key} is missing`);
       }
+      if (model.costsOnly === true) continue;
       assert.ok(overview.modelPalette.includes(model.color), `${model.route} color must come from modelPalette`);
       assert.ok(!model.label.includes("/"), "model label is the model name");
     }
     assert.equal(overview.modelPalette.length, 10);
-    assert.equal(new Set(overview.models.map((model) => model.color)).size, overview.models.length);
+    const tokenModels = overview.models.filter((model) => model.costsOnly !== true);
+    assert.equal(new Set(tokenModels.map((model) => model.color)).size, tokenModels.length);
+    const searchRow = overview.models.find((model) => model.route === "official/server-tool-search");
+    assert.ok(searchRow !== undefined, "synthetic search row must exist");
+    assert.equal(searchRow.tokens, 0);
+    assert.equal(searchRow.costsOnly, true);
+    assert.equal(searchRow.searches, 3);
+    assert.equal(searchRow.costCNY, 0.015);
+    assert.equal(tokenModels.length, 3);
+    assert.equal(overview.daily.reduce((sum, day) => sum + day.searches, 0), 3);
+    assert.equal(overview.daily.reduce((sum, day) => sum + day.searchCostCNY, 0), 0.015);
     const flash = overview.models.find((model) => model.route === "opencode-go/deepseek-v4.1-flash");
     assert.equal(flash.priced, true);
     assert.ok(flash.costCNY > 0);

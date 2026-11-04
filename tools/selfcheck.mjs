@@ -14,11 +14,13 @@ import assert from "node:assert/strict";
 
 import {
   PRICE_TABLE_VERSION,
+  SEARCH_REQUEST_PRICE_CNY,
   costOfUsage,
   createPricing,
   effectivePrice,
   isPeakTime,
   priceForRoute,
+  searchCost,
 } from "../lib/pricing.js";
 import {
   DEFAULT_USD_RATE,
@@ -96,6 +98,10 @@ const events = [
   messageEvent({ seq: 3, time: Date.UTC(2026, 10, 3, 3, 0, 0), provider: "deepseek", model: "deepseek-v4-pro", input: 1 * M, output: 1 * M, cacheRead: 1 * M }),
   // Off-peak: Beijing Mon 04:00 (2026-11-01T20:00Z) — unpriced model.
   messageEvent({ seq: 4, time: Date.UTC(2026, 10, 1, 20, 0, 0), provider: "anthropic", model: "claude-opus-4.1", input: 1 * M, output: 0.1 * M }),
+  // Official web-search requests: billed per request (¥0.005 each), no usage field.
+  { type: "web/deepseek-search-llm-request", seq: 9, time: NOW - 30 * 60_000, data: {} },
+  { type: "web/deepseek-search-llm-request", seq: 10, time: NOW - 20 * 60_000, data: {} },
+  { type: "web/deepseek-search-llm-request", seq: 11, time: NOW - 10 * 60_000, data: {} },
   // Too old for the 31-day cache horizon: must be pruned.
   messageEvent({ seq: 5, time: Date.UTC(2026, 8, 1, 2, 0, 0), provider: "opencode-go", model: "deepseek-v4.1-flash", input: 99 * M, output: 99 * M }),
   // Not a usage event: must be skipped without throwing.
@@ -359,6 +365,74 @@ check(
 );
 
 check(
+  "searchCost(): flat ¥0.005 per official search request",
+  () => {
+    assert.equal(SEARCH_REQUEST_PRICE_CNY, 0.005);
+    assert.equal(searchCost(0), 0);
+    assert.equal(searchCost(1), 0.005);
+    assert.equal(searchCost(3), 0.015);
+    assert.equal(searchCost(1000), 5);
+    assert.equal(searchCost(-4), 0);
+    assert.equal(searchCost(Number.NaN), 0);
+  },
+  "¥0.005 / request · ¥5 / 1000",
+);
+
+check(
+  "official search: counted per event, flat cost, separate from token cost",
+  () => {
+    assert.equal(overview.totals.searches, 3);
+    assert.equal(overview.totals.searchCostCNY, 0.015);
+    closeTo(overview.totals.costCNY, 51.8);
+    closeTo(overview.totals.costCNYTotal, 51.815);
+    closeTo(overview.totals.costCNYWithSearch, 51.815);
+    assert.equal(overview.daily.reduce((sum, day) => sum + day.searches, 0), 3);
+    closeTo(overview.daily.reduce((sum, day) => sum + day.searchCostCNY, 0), 0.015);
+    assert.deepEqual(overview.pricing.search, {
+      unit: "per-request",
+      priceCNY: 0.005,
+      note: "¥5 / 1000 次成功请求",
+    });
+    // A tool/call web_search is NOT a billed unit and must not be counted.
+    assert.equal(overview.totals.events, 4);
+  },
+  "searches=3 · ¥0.015 · total ¥51.815",
+);
+
+check(
+  "official search row: tokens 0, costsOnly, cost share",
+  () => {
+    const row = overview.models.find((model) => model.route === "official/server-tool-search");
+    assert.ok(row !== undefined, "synthetic search row must exist");
+    assert.equal(row.label, "官方搜索");
+    assert.equal(row.vendor, "deepseek");
+    assert.equal(row.priceLevel, "official");
+    assert.equal(row.tokens, 0);
+    assert.equal(row.costsOnly, true);
+    assert.equal(row.searches, 3);
+    closeTo(row.costCNY, 0.015);
+    closeTo(row.shareByCost, 0.015 / 51.815, 1e-6);
+    // The synthetic row is not a priced model in the price-level counters.
+    assert.deepEqual(overview.pricing.priceLevels, { official: 2, unpriced: 1 });
+  },
+  "official/server-tool-search · tokens=0 · ¥0.015",
+);
+
+check(
+  "no search events → no synthetic row, zero search cost",
+  () => {
+    const usageOnly = events.filter((event) => !String(event.type).includes("search"));
+    const plainAggregate = summarizeSessionEvents("session-no-search", usageOnly, { pricing, now: NOW });
+    const plain = buildOverview([plainAggregate], { windowKey: "7d", now: NOW, pricing, usdRate: DEFAULT_USD_RATE });
+    assert.equal(plain.totals.searches, 0);
+    assert.equal(plain.totals.searchCostCNY, 0);
+    assert.equal(plain.totals.costCNYTotal, plain.totals.costCNY);
+    assert.equal(plain.models.some((model) => model.costsOnly === true), false);
+  },
+  "no row · ¥0",
+);
+
+check(
   "cache hit rate: 16M / 22M = 72.7%",
   () => {
     closeTo(overview.totals.cacheHitRate, 16 / 22);
@@ -437,9 +511,11 @@ check(
     assert.equal(overview.modelPalette[0], "#12b886");
     assert.equal(overview.otherModelColor, OTHER_MODEL_COLOR);
     assert.deepEqual(overview.modelPalette, [...MODEL_PALETTE]);
-    const colors = overview.models.map((model) => model.color);
+    // The synthetic search row is cost-only and uses the neutral colour.
+    const tokenModels = overview.models.filter((model) => model.costsOnly !== true);
+    const colors = tokenModels.map((model) => model.color);
     assert.equal(new Set(colors).size, colors.length, "colors are unique per model");
-    for (const model of overview.models) {
+    for (const model of tokenModels) {
       assert.ok(overview.modelPalette.includes(model.color), `${model.route} color is from the palette`);
       assert.ok(typeof model.label === "string" && model.label.length > 0);
       assert.ok(!model.label.includes("/"), "label is the model name, not the route");
