@@ -459,9 +459,9 @@ check(
     assert.ok(readyText.includes("DSH 运行状态"));
     assert.ok(readyText.includes("实时 · 5 秒采样"));
     assert.ok(readyText.includes("11 核 负载 0.00"));
-    assert.ok(readyText.includes("CPU（单核）"));
+    assert.ok(readyText.includes("CPU（进程）"));
     assert.ok(readyText.includes("0.0%"));
-    assert.ok(readyText.includes("单核"));
+    assert.ok(/\d+(\.\d+)?% · \d+(\.\d+)? 核/.test(readyText));
     assert.ok(readyText.includes("整机 0.0% · 11 核"));
     assert.ok(readyText.includes("内存（RSS）"));
     assert.ok(readyText.includes("619"));
