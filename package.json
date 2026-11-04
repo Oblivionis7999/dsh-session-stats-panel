@@ -1,0 +1,58 @@
+{
+  "name": "dsh-session-stats-panel",
+  "version": "1.0.0",
+  "description": "DSH Web 左侧栏「会话统计」页面：Token 与成本估算、DSH 运行状态实时采样、每日消耗堆叠柱与 Token 构成环形图。零第三方依赖，图表全部内联 SVG。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "session-stats",
+    "usage",
+    "statistics"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./icon.svg",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "locale",
+    "icon.svg",
+    "README.md",
+    "tools",
+    "docs",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "author": "织风裁月 (Oblivionis7999)",
+  "homepage": "https://github.com/Oblivionis7999/dsh-session-stats-panel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Oblivionis7999/dsh-session-stats-panel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Oblivionis7999/dsh-session-stats-panel/issues"
+  }
+}

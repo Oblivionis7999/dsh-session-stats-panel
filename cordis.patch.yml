@@ -1,0 +1,25 @@
+# ============================================================================
+# dsh-session-stats-panel —— DSH bundle patch
+# ============================================================================
+# 这是插件的“挂载声明”。DSH 启动时按 bundle 层栈叠加各插件 patch，
+# 本文件把「会话统计」宿主半（两条 /session-stats/api/* 路由）与浏览器半
+# （侧栏页面 + 图标）插入 Web profile 的配置树。
+#
+# 安装方式（本地开发，不复制、不手改 profile patch）：
+#   dsh plugin --profile web add "link:<本包目录的绝对路径>"
+# 卸载：
+#   dsh plugin --profile web remove dsh-session-stats-panel
+#
+# config 里是可选配置；全部键都有内置默认值，删掉同样能跑。
+# ============================================================================
+
+- insert:
+    - id: session-stats
+      name: dsh-session-stats-panel
+      config:
+        # 显示用 USD 汇率（CNY 为权威口径，USD 仅派生显示）。
+        usdRate: 7.1
+        # 默认时间档：24h | 7d | 14d | 30d
+        window: 7d
+        # overview 响应缓存毫秒数；0 表示每次请求都重算（会话级增量缓存仍生效）。
+        ttlMs: 60000
