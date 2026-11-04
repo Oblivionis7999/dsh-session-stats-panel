@@ -9,3 +9,4 @@ Thumbs.db
 .publish-from-token.sh
 .auth-url.txt
 .publish.log
+*.bak-*

@@ -12,7 +12,7 @@
 
 import assert from "node:assert/strict";
 
-import { apply, normalizeConfig, OVERVIEW_PATH, LIVE_PATH } from "../lib/index.js";
+import { apply, isLoopbackRequest, normalizeConfig, OVERVIEW_PATH, LIVE_PATH } from "../lib/index.js";
 
 const results = [];
 let failures = 0;
@@ -337,6 +337,34 @@ check(
     assert.equal(unpriced.sourceUrl, null);
     assert.equal(unpriced.costCNY, 0);
     assert.deepEqual(overview.pricing.priceLevels, { official: 2, unpriced: 1 });
+    const costSlices = overview.costComposition;
+    assert.ok(Array.isArray(costSlices) && costSlices.length >= 2);
+    const costSum = costSlices.reduce((sum, slice) => sum + slice.costCNY, 0);
+    assert.ok(Math.abs(costSum - overview.totals.costCNYTotal) < 1e-9, "cost slices sum to costCNYTotal");
+    assert.ok(Math.abs(costSlices.reduce((sum, slice) => sum + slice.share, 0) - 1) < 1e-4, "shares sum to 1");
+    const costSearch = costSlices.find((slice) => slice.route === "official/server-tool-search");
+    assert.ok(costSearch !== undefined, "search cost slice present");
+    assert.equal(costSearch.color, overview.otherModelColor);
+    for (const slice of costSlices) {
+      const model = overview.models.find((entry) => entry.route === slice.route);
+      assert.ok(model !== undefined);
+      assert.equal(slice.color, model.color);
+      assert.equal(slice.label, model.label);
+    }
+    const terminal = overview.terminal;
+    assert.ok(terminal !== null && typeof terminal === "object");
+    assert.equal(terminal.indices.length, 5);
+    assert.ok(terminal.candles.bars.length > 0);
+    assert.ok(terminal.tape.length <= 20);
+    for (let index = 1; index < terminal.tape.length; index += 1) {
+      assert.ok(terminal.tape[index - 1].t >= terminal.tape[index].t);
+    }
+    for (const symbol of terminal.symbols) {
+      const model = overview.models.find((entry) => entry.route === symbol.route);
+      assert.ok(model !== undefined);
+      assert.equal(symbol.tokens, model.tokens);
+      assert.equal(symbol.costCNY, model.costCNY);
+    }
     assert.ok(Array.isArray(overview.composition) && overview.composition.length >= 3);
     assert.equal(overview.composition.reduce((sum, part) => sum + part.tokens, 0), overview.totals.tokens);
   },
@@ -448,7 +476,11 @@ check(
     assert.equal(typeof live.cpu.single, "number");
     assert.equal(typeof live.cpu.machine, "number");
     assert.ok(Number.isInteger(live.cpu.cores) && live.cpu.cores >= 1);
-    assert.equal(typeof live.cpu.loadavg, "number");
+    // Load average is a Unix-only metric and is meaningless (always 0) on
+    // Windows, so the snapshot does not carry it at all.
+    assert.equal("loadavg" in live.cpu, false, "loadavg must not be exposed");
+    assert.equal("loadavgSupported" in live.cpu, false);
+    assert.equal("loadavgPerCore" in live.cpu, false);
     assert.equal(typeof live.memory.rssMB, "number");
     assert.equal(typeof live.memory.heapUsedMB, "number");
     assert.equal(typeof live.eventLoop.p99ms, "number");
@@ -504,6 +536,21 @@ check(
 // Report
 // ---------------------------------------------------------------------------
 console.log("");
+// ---------------------------------------------------------------------------
+// Host fence across machine setups (LAN / reverse proxy / public host)
+// ---------------------------------------------------------------------------
+check("host fence: LAN peer stays blocked by default, opens with allowPrivateHosts", () => {
+  const lan = { headers: { host: "192.168.1.20:2820" } };
+  assert.equal(isLoopbackRequest(lan, normalizeConfig({ allowedHosts: [], allowPrivateHosts: false })), false);
+  assert.equal(isLoopbackRequest(lan, normalizeConfig({ allowedHosts: [], allowPrivateHosts: true })), true);
+});
+
+check("host fence: public hostname is still rejected even with allowPrivateHosts", () => {
+  const evil = { headers: { host: "evil.example.com:2820" } };
+  assert.equal(isLoopbackRequest(evil, normalizeConfig({ allowedHosts: [], allowPrivateHosts: true })), false);
+  assert.equal(isLoopbackRequest(evil, normalizeConfig({ allowedHosts: ["evil.example.com"], allowPrivateHosts: true })), true);
+});
+
 for (const result of results) {
   if (result.ok) {
     console.log(`  ok  ${result.name}${result.actual === undefined ? "" : `  →  ${result.actual}`}`);

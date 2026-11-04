@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-stats-panel",
-  "version": "1.1.1",
+  "version": "2.2.1",
   "description": "DSH Web 左侧栏「会话统计」页面：Token 与成本估算、DSH 运行状态实时采样、每日消耗堆叠柱与 Token 构成环形图。零第三方依赖，图表全部内联 SVG。",
   "keywords": [
     "dsh",
@@ -63,5 +63,13 @@
   },
   "scripts": {
     "selfcheck": "node tools/selfcheck.mjs && node tools/selfcheck-host.mjs && node tools/selfcheck-client.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.2.1-rc.5"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
   }
 }

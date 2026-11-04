@@ -42,10 +42,14 @@ const fakeReact = {
       if (Array.isArray(child)) flat.push(...child.flat(Infinity));
       else flat.push(child);
     }
+    const childrenFlat = flat.filter((child) => child !== null && child !== undefined && child !== false && child !== true);
+    if (typeof type === "function") {
+      return type({ ...(props ?? {}), children: childrenFlat });
+    }
     return {
       $$element: true,
       type,
-      props: { ...(props ?? {}), children: flat.filter((child) => child !== null && child !== undefined && child !== false && child !== true) },
+      props: { ...(props ?? {}), children: childrenFlat },
     };
   },
   useState(initial) {
@@ -178,7 +182,7 @@ const sidebarRegistration = registrations.find((entry) => entry.definition.name 
 check(
   "main slot registration targets the session-stats panel key",
   () => {
-    assert.equal(mainRegistration.definition.key, "session-stats");
+    assert.equal(mainRegistration.definition.key, "session-stats-panel");
     assert.equal(mainRegistration.definition.locale, "session-stats");
     assert.equal(typeof mainRegistration.component, "function");
   },
@@ -188,8 +192,8 @@ check(
 check(
   "sidebar registration has id, order, and localized label",
   () => {
-    assert.equal(sidebarRegistration.definition.id, "session-stats");
-    assert.equal(sidebarRegistration.definition.order, 20);
+    assert.equal(sidebarRegistration.definition.id, "session-stats-panel");
+    assert.equal(sidebarRegistration.definition.order, -10);
     assert.equal(sidebarRegistration.definition.label(), "会话统计");
   },
   `order=${sidebarRegistration.definition.order} label=会话统计`,
@@ -285,419 +289,318 @@ function findElements(node, predicate, output = []) {
   return output;
 }
 
-const Page = mainRegistration.component;
-
-/** Palette echoed by the host response (single source of truth for chart colors). */
+// Terminal page sample payload
+// ---------------------------------------------------------------------------
 const PALETTE = ["#12b886", "#4dabf7", "#9775fa", "#ff922b", "#22b8cf", "#f06595", "#fcc419", "#5c7cfa", "#b08968", "#adb5bd"];
 const OTHER_COLOR = "#868e96";
 
-/** Four models summing to the screenshot total (764.9M) and cost (¥47.48). */
-const SAMPLE_MODELS = [
-  { provider: "deepseek", model: "deepseek-v4.1-flash", route: "deepseek/deepseek-v4.1-flash", label: "deepseek-v4.1-flash", color: PALETTE[0], tokens: 520_000_000, costCNY: 30, costUSD: 4.225352, share: 520 / 764.9, events: 20, priced: true, priceKey: "deepseek-flash", vendor: "deepseek", priceLevel: "official", sourceUrl: "https://api-docs.deepseek.com/zh-cn/quick_start/pricing" },
-  { provider: "deepseek", model: "deepseek-v4-pro", route: "deepseek/deepseek-v4-pro", label: "deepseek-v4-pro", color: PALETTE[1], tokens: 150_000_000, costCNY: 7.48, costUSD: 1.053521, share: 150 / 764.9, events: 2, priced: true, priceKey: "deepseek-v4-pro", vendor: "deepseek", priceLevel: "official", sourceUrl: "https://api-docs.deepseek.com/zh-cn/quick_start/pricing" },
-  { provider: "opencode-go", model: "kimi-k3", route: "opencode-go/kimi-k3", label: "kimi-k3", color: PALETTE[2], tokens: 50_000_000, costCNY: 10, costUSD: 1.408451, share: 50 / 764.9, events: 5, priced: true, priceKey: "kimi-k3", vendor: "moonshot", priceLevel: "official", sourceUrl: "https://platform.kimi.com/docs/pricing/chat" },
-  { provider: "opencode-go", model: "claude-opus-4.1", route: "opencode-go/claude-opus-4.1", label: "claude-opus-4.1", color: PALETTE[3], tokens: 44_900_000, costCNY: 0, costUSD: 0, share: 44.9 / 764.9, events: 1, priced: false, priceKey: null, vendor: "anthropic", priceLevel: "unpriced", sourceUrl: null },
-  { provider: "official", model: "server-tool-search", route: "official/server-tool-search", label: "官方搜索", color: OTHER_COLOR, tokens: 0, costCNY: 0.02, costUSD: 0.002817, share: 0, shareByCost: 0.02 / 47.5, events: 0, priced: true, priceKey: "search:per-request", vendor: "deepseek", priceLevel: "official", costsOnly: true, searches: 4 },
-];
-
-const FLASH_RATE = 30 / 520_000_000;
-const PRO_RATE = 7.48 / 150_000_000;
-const KIMI_RATE = 10 / 50_000_000;
-const CLAUDE_RATE = 0;
-
-/** Build one daily bucket whose per-model tokens sum to the day total. */
-function sampleDay(key, label, flashTokens, proTokens, kimiTokens, claudeTokens) {
-  const tokens = flashTokens + proTokens + kimiTokens + claudeTokens;
-  const flashCost = flashTokens * FLASH_RATE;
-  const proCost = proTokens * PRO_RATE;
-  const kimiCost = kimiTokens * KIMI_RATE;
-  const claudeCost = claudeTokens * CLAUDE_RATE;
-  const costCNY = flashCost + proCost + kimiCost + claudeCost;
-  const dayModels = [
-    { route: "deepseek/deepseek-v4.1-flash", label: "deepseek-v4.1-flash", color: PALETTE[0], tokens: flashTokens, costCNY: flashCost, costUSD: flashCost / 7.1, share: tokens > 0 ? flashTokens / tokens : 0, vendor: "deepseek", priceLevel: "official" },
-    { route: "deepseek/deepseek-v4-pro", label: "deepseek-v4-pro", color: PALETTE[1], tokens: proTokens, costCNY: proCost, costUSD: proCost / 7.1, share: tokens > 0 ? proTokens / tokens : 0, vendor: "deepseek", priceLevel: "official" },
-    { route: "opencode-go/kimi-k3", label: "kimi-k3", color: PALETTE[2], tokens: kimiTokens, costCNY: kimiCost, costUSD: kimiCost / 7.1, share: tokens > 0 ? kimiTokens / tokens : 0, vendor: "moonshot", priceLevel: "official" },
-    { route: "opencode-go/claude-opus-4.1", label: "claude-opus-4.1", color: PALETTE[3], tokens: claudeTokens, costCNY: claudeCost, costUSD: claudeCost / 7.1, share: tokens > 0 ? claudeTokens / tokens : 0, vendor: "anthropic", priceLevel: "unpriced" },
-  ].filter((model) => model.tokens > 0);
-  return {
-    key,
-    label,
-    start: 0,
-    end: 0,
-    input: Math.round(tokens * 0.004),
-    output: Math.round(tokens * 0.005),
-    cacheRead: Math.round(tokens * 0.991),
-    cacheWrite: 0,
-    tokens,
-    costCNY,
-    costUSD: costCNY / 7.1,
-    events: 3,
-    models: dayModels,
-  };
+/** Build one candle bar (OHLC in tokens/minute). */
+function bar(t, o, h, l, c, tokens, costCNY, calls, byModel) {
+  return { t, o, h, l, c, tokens, costCNY, calls, sessions: 2, cacheHit: 0.9, byModel, vol: calls, empty: false };
 }
 
-/** The reference screenshot payload, shaped exactly like the host response. */
+const SAMPLE_BARS = [
+  bar(1793700000000, 12000, 18000, 11000, 15000, 3000000, 2.1, 4, [{ route: "deepseek/deepseek-v4.1-flash", tokens: 2000000 }, { route: "opencode-go/kimi-k3", tokens: 1000000 }]),
+  bar(1793703600000, 15000, 16000, 9000, 10000, 2000000, 1.4, 3, [{ route: "deepseek/deepseek-v4.1-flash", tokens: 1500000 }, { route: "opencode-go/kimi-k3", tokens: 500000 }]),
+  bar(1793707200000, 10000, 10000, 10000, 10000, 0, 0, 0, [], true),
+  bar(1793710800000, 10000, 22000, 10000, 20000, 4000000, 3.2, 6, [{ route: "deepseek/deepseek-v4.1-flash", tokens: 3000000 }, { route: "opencode-go/kimi-k3", tokens: 1000000 }]),
+  bar(1793714400000, 20000, 24000, 14000, 16000, 3200000, 2.4, 5, [{ route: "deepseek/deepseek-v4.1-flash", tokens: 2200000 }, { route: "opencode-go/kimi-k3", tokens: 1000000 }]),
+];
+const SAMPLE_TERMINAL = {
+  indices: [
+    { key: "tokens", label: "总消耗", value: 764900000, unit: "tokens", chgPct: 0.124, spark: [1, 2, 3, 2, 4, 3, 5, 4, 6, 5, 7, 8] },
+    { key: "cost", label: "预估成本", value: 47.5, unit: "¥", chgPct: 0.031, spark: [1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7] },
+    { key: "sessions", label: "会话数", value: 22, unit: "个", chgPct: -0.05, spark: [3, 4, 4, 5, 4, 6, 5, 6, 7, 6, 7, 8] },
+    { key: "cacheHit", label: "缓存命中率", value: 0.996, unit: "%", chgPct: 0.002, spark: [9, 9, 10, 9, 10, 10, 9, 10, 10, 10, 10, 10] },
+    { key: "search", label: "官方搜索", value: 4, unit: "次", chgPct: null, spark: [0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0] },
+  ],
+  symbols: [
+    { code: "MDL-01", route: "deepseek/deepseek-v4.1-flash", name: "deepseek-v4.1-flash", vendor: "deepseek", color: PALETTE[0], tokens: 520000000, costCNY: 30, unpriced: false, rate: 24000, chgPct: 0.12, spark: [3, 4, 4, 5, 6, 5, 7, 8] },
+    { code: "MDL-02", route: "opencode-go/kimi-k3", name: "kimi-k3", vendor: "moonshot", color: PALETTE[1], tokens: 50000000, costCNY: 10, unpriced: false, rate: 8000, chgPct: -0.04, spark: [4, 3, 5, 4, 3, 4, 3, 2] },
+    { code: "MDL-03", route: "opencode-go/claude-opus-4.1", name: "claude-opus-4.1", vendor: "anthropic", color: PALETTE[2], tokens: 44900000, costCNY: 0, unpriced: true, rate: 7000, chgPct: null, spark: [0, 0, 0, 0, 0, 0, 0, 0] },
+  ],
+  candles: { period: "1h", bars: SAMPLE_BARS },
+  tape: [
+    { t: 1793714400000, kind: "chat", model: "deepseek-v4.1-flash", tokens: 1300000, costCNY: 1.84 },
+    { t: 1793714000000, kind: "search", model: "官方搜索", tokens: 0, costCNY: 0.005 },
+    { t: 1793713600000, kind: "chat", model: "kimi-k3", tokens: 900000, costCNY: 0.72 },
+  ],
+};
 const SAMPLE_OVERVIEW = {
   ok: true,
-  generatedAt: Date.now(),
-  window: {
-    key: "7d",
-    granularity: "day",
-    bucketCount: 7,
-    from: 0,
-    to: 0,
-    label: "近 7 天",
-    labelEn: "Last 7 days",
-    points: ["10/28", "10/29", "10/30", "10/31", "11/1", "11/2", "11/3"],
-  },
+  generatedAt: 1793714400000,
+  window: { key: "7d", granularity: "day", bucketCount: 7, from: 1793109600000, to: 1793714400000, label: "近 7 天", points: ["10/28", "11/3"] },
   currency: { code: "CNY", symbol: "¥", usdRate: 7.1, usdSymbol: "$" },
-  totals: {
-    tokens: 764_900_000,
-    input: 3_380_000,
-    output: 3_410_000,
-    cacheRead: 758_100_000,
-    cacheWrite: 0,
-    costCNY: 47.48,
-    costUSD: 6.687324,
-    cacheHitRate: 0.99556,
-    sessions: 22,
-    avgTokensPerSession: 34_768_182,
-    pricedTokens: 720_000_000,
-    unpricedTokens: 44_900_000,
-    priced: false,
-    unpricedModels: 1,
-    searches: 4,
-    searchCostCNY: 0.02,
-    costCNYTotal: 47.5,
-    costCNYWithSearch: 47.5,
-    events: 1234,
-  },
-  pricing: { tableVersion: "vendor-official-2026-11", peakMultiplier: 2, peakEvents: 10, offPeakEvents: 4, mode: "mixed", holidays: [], usdRate: 7.1, officialLists: ["vendor-official"], priceLevels: { official: 3, unpriced: 1 } },
-  modelPalette: PALETTE,
+  totals: { tokens: 764900000, costCNY: 47.48, costUSD: 6.687324, costCNYTotal: 47.5, sessions: 22, cacheHitRate: 0.99556, searches: 4, searchCostCNY: 0.02, unpricedModels: 1, unpricedTokens: 44900000 },
+  models: [
+    { provider: "deepseek", model: "deepseek-v4.1-flash", route: "deepseek/deepseek-v4.1-flash", label: "deepseek-v4.1-flash", color: PALETTE[0], tokens: 520000000, costCNY: 30, costUSD: 4.2, share: 0.68, vendor: "deepseek", priceLevel: "official" },
+    { provider: "opencode-go", model: "kimi-k3", route: "opencode-go/kimi-k3", label: "kimi-k3", color: PALETTE[1], tokens: 50000000, costCNY: 10, costUSD: 1.4, share: 0.065, vendor: "moonshot", priceLevel: "official" },
+    { provider: "opencode-go", model: "claude-opus-4.1", route: "opencode-go/claude-opus-4.1", label: "claude-opus-4.1", color: PALETTE[2], tokens: 44900000, costCNY: 0, costUSD: 0, share: 0.059, vendor: "anthropic", priceLevel: "unpriced" },
+  ],
   otherModelColor: OTHER_COLOR,
-  composition: [
-    { key: "cacheRead", tokens: 758_100_000, share: 0.991111 },
-    { key: "input", tokens: 3_380_000, share: 0.004419 },
-    { key: "output", tokens: 3_410_000, share: 0.004458 },
-  ],
-  daily: [
-    sampleDay("1", "10/28", 68_000_000, 20_500_000, 6_500_000, 6_000_000),
-    sampleDay("2", "10/29", 63_000_000, 19_000_000, 6_000_000, 5_500_000),
-    sampleDay("3", "10/30", 73_000_000, 22_000_000, 7_000_000, 6_500_000),
-    sampleDay("4", "10/31", 57_000_000, 17_000_000, 5_000_000, 5_000_000),
-    sampleDay("5", "11/1", 69_000_000, 20_700_000, 6_300_000, 6_000_000),
-    sampleDay("6", "11/2", 79_000_000, 23_700_000, 7_300_000, 7_000_000),
-    sampleDay("7", "11/3", 111_000_000, 27_100_000, 11_900_000, 8_900_000),
-  ],
-  models: SAMPLE_MODELS,
-  scan: { sessionsScanned: 22, sessionsTotal: 22, readCount: 22, cachedCount: 0 },
+  pricing: { tableVersion: "vendor-official-2026-11" },
+  terminal: SAMPLE_TERMINAL,
 };
-
-/** The reference screenshot live snapshot. */
-const SAMPLE_LIVE = {
-  ok: true,
-  sampledAt: Date.now(),
-  intervalMs: 5000,
-  points: 60,
-  windowSec: 300,
-  cpu: { single: 0, machine: 0, cores: 11, loadavg: 0 },
-  memory: { rssMB: 619, heapUsedMB: 190, heapTotalMB: 240, externalMB: 6, arrayBuffersMB: 2 },
-  eventLoop: { p99ms: 121.2, meanMs: 25.5, resolutionMs: 10 },
-  uptimeSec: 1740,
-  uptimeText: "29m",
-  pid: 2866,
-  node: "v24.21.0",
-  platform: "win32",
-  history: { values: [0, 0.1, 0.05, 0.08], peak: 0.1, windowSec: 300, intervalMs: 5000 },
-};
+const SAMPLE_LIVE = { ok: true, sampledAt: 1793714400000, intervalMs: 5000, points: 60, windowSec: 300, cpu: { single: 0, machine: 0, cores: 11 }, memory: { rssMB: 619, heapUsedMB: 190, heapTotalMB: 240, externalMB: 6, arrayBuffersMB: 2 }, eventLoop: { p99ms: 121.2, meanMs: 25.5, resolutionMs: 10 }, uptimeSec: 1740, uptimeText: "29m", pid: 2866, node: "v24.21.0", platform: "win32", history: { values: [0, 0.1, 0.05, 0.08], peak: 0.1, windowSec: 300, intervalMs: 5000 } };
 
 /** Render the page with a fixed hook-state sequence. */
-function renderPage({ windowKey = "7d", currency = "CNY", overview = null, live = null, error = null } = {}) {
-  stateQueue = [windowKey, currency, 0, { status: overview === null ? "loading" : "ready", data: overview, error }, live];
+function renderPage({ mode = "terminal", windowKey = "7d", currency = "CNY", view = "bars", overview = null, live = null, error = null } = {}) {
+  stateQueue = [mode, ...(mode === "terminal" ? [windowKey, currency, view, "tokens", "ALL", -1, 0, { status: error ? "error" : overview === null ? "loading" : "ready", data: overview, error }, live] : [windowKey, currency, 0, { status: error ? "error" : overview === null ? "loading" : "ready", data: overview, error }, live])];
   const tree = Page({ t: translate });
-  return { tree, text: renderText(tree) };
+  const text = [];
+  const walk = (node) => {
+    if (node === null || node === undefined || typeof node !== "object") {
+      if (typeof node === "string" || typeof node === "number") text.push(String(node));
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child);
+      return;
+    }
+    if (node.$$element) {
+      if (typeof node.props.title === "string") text.push(node.props.title);
+      if (typeof node.props["aria-label"] === "string") text.push(node.props["aria-label"]);
+      walk(node.props.children);
+    }
+  };
+  walk(tree);
+  return { tree, text };
 }
 
+/** Depth-first element finder. */
+function findNodes(node, predicate, output = []) {
+  if (node === null || node === undefined || typeof node !== "object") return output;
+  if (Array.isArray(node)) {
+    for (const child of node) findNodes(child, predicate, output);
+    return output;
+  }
+  if (node.$$element) {
+    if (predicate(node)) output.push(node);
+    findNodes(node.props.children, predicate, output);
+  }
+  return output;
+}
+
+const Page = mainRegistration.component;
 const ready = renderPage({ overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE });
 const readyText = ready.text;
 
 check(
-  "page header: title, four time tabs, two currencies",
+  "terminal header: title, SESSION TERMINAL, tabs, currencies, chart toggle",
   () => {
-    assert.ok(readyText.includes("会话统计"), "title");
+    assert.ok(readyText.includes("会话统计"));
+    assert.ok(readyText.includes("SESSION TERMINAL"));
     for (const label of ["近 24 小时", "近 7 天", "近 14 天", "近 30 天"]) assert.ok(readyText.includes(label), label);
-    assert.ok(readyText.includes("人民币"));
-    assert.ok(readyText.includes("美元"));
+    assert.ok(readyText.includes("CNY"));
+    assert.ok(readyText.includes("USD"));
+    assert.ok(readyText.includes("堆叠柱"));
+    assert.ok(readyText.includes("K线"));
   },
-  "会话统计 / 4 tabs / 人民币 | 美元",
+  "会话统计 / SESSION TERMINAL / 4 tabs / 柱状·K线",
 );
 
 check(
-  "stat cards show the reference numbers",
+  "index strip renders five cells with change badges and mini K",
   () => {
-    assert.ok(readyText.includes("总 Token 消耗"));
-    assert.ok(readyText.includes("764.9M"), "total tokens");
-    assert.ok(readyText.includes("tokens"));
-    assert.ok(readyText.includes("输入 3.38M · 输出 3.41M"), "input/output sub line");
-    assert.ok(readyText.includes("预估成本"));
-    assert.ok(readyText.includes("¥47.50"), "CNY cost incl. official search");
-    assert.ok(readyText.some((value) => value.includes("各厂商官方价目 · DeepSeek 峰谷分时")), "vendor-official price sub line");
-    assert.ok(readyText.some((value) => value.includes("含官方搜索 4 次 ¥0.02")), "official search sub line");
-    assert.ok(readyText.includes("会话数"));
-    assert.ok(readyText.includes("22"), "session count");
-    assert.ok(readyText.includes("平均每会话 34.8M tokens"));
-    assert.ok(readyText.includes("缓存命中率"));
-    assert.ok(readyText.includes("99.6%"));
-    assert.ok(readyText.includes("缓存读取 758.1M"));
+    const cells = findNodes(ready.tree, (node) => node.props.className && String(node.props.className).startsWith("ssp-index") && node.type === "button");
+    assert.equal(cells.length, 5);
+    for (const label of ["总消耗", "预估成本", "会话数", "缓存命中率", "官方搜索"]) assert.ok(readyText.includes(label), label);
+    assert.ok(readyText.some((value) => value.includes("▲")), "up badge");
+    assert.ok(readyText.some((value) => value.includes("▼")), "down badge");
+    const minis = findNodes(ready.tree, (node) => String(node.props.className ?? "").includes("ssp-mini-k"));
+    assert.ok(minis.length >= 5, "one mini K per index cell");
   },
-  "764.9M / ¥47.48 / 22 / 99.6%",
+  "5 indices + ▲▼ + mini K",
 );
 
 check(
-  "live card shows the runtime snapshot",
+  "instrument header shows price, change and five stats",
   () => {
-    assert.ok(readyText.includes("DSH 运行状态"));
-    assert.ok(readyText.includes("实时 · 5 秒采样"));
-    assert.ok(readyText.includes("11 核 负载 0.00"));
-    assert.ok(readyText.includes("CPU（进程）"));
-    assert.ok(readyText.includes("0.0%"));
-    assert.ok(/\d+(\.\d+)?% · \d+(\.\d+)? 核/.test(readyText));
-    assert.ok(readyText.includes("整机 0.0% · 11 核"));
-    assert.ok(readyText.includes("内存（RSS）"));
-    assert.ok(readyText.includes("619"));
-    assert.ok(readyText.includes("堆已用 190 MB"));
-    assert.ok(readyText.includes("事件循环 p99"));
-    assert.ok(readyText.includes("121.2"));
-    assert.ok(readyText.includes("平均 25.5 ms"));
-    assert.ok(readyText.includes("运行时长"));
-    assert.ok(readyText.includes("29m"));
-    assert.ok(readyText.includes("PID 2866 · Node v24.21.0"));
-    assert.ok(readyText.includes("最近 5 分钟 CPU"));
-    assert.ok(readyText.includes("峰值 0.1%"));
+    assert.ok(readyText.includes("今开"));
+    assert.ok(readyText.includes("最高"));
+    assert.ok(readyText.includes("最低"));
+    assert.ok(readyText.includes("均价"));
+    assert.ok(readyText.includes("振幅"));
+    const price = findNodes(ready.tree, (node) => node.props.className === "ssp-instrument-price");
+    assert.equal(price.length, 1);
   },
-  "0.0% / 619 MB / 121.2 ms / 29m / 峰值 0.1%",
+  "price + 5 stats",
 );
 
 check(
-  "daily card header + stacked bars + axis labels",
+  "bars mode is the default and renders stacked model bars",
   () => {
-    assert.ok(readyText.includes("每日消耗"));
-    assert.ok(readyText.includes("按 token 堆叠 · 近 7 天"));
-    assert.ok(readyText.includes("764.9M tokens"));
-    assert.ok(readyText.includes("¥47.48"));
-    for (const label of SAMPLE_OVERVIEW.window.points) assert.ok(readyText.includes(label), label);
-    const bars = findElements(ready.tree, (node) => node.props.className === "ssp-bar");
-    assert.ok(bars.length >= 7, `expected 7 bars, got ${bars.length}`);
-    const segments = findElements(ready.tree, (node) => node.props.className === "ssp-bar-seg");
-    assert.ok(segments.length >= 7, "every bar has model segments");
-    const colors = new Set(segments.map((node) => node.props.style.background));
-    assert.ok(colors.size >= 3, `expected >=3 model colors in the bars, got ${colors.size}`);
+    const bars = findNodes(ready.tree, (node) => node.props.className === "ssp-term-bar");
+    assert.ok(bars.length >= SAMPLE_BARS.length, `expected >= ${SAMPLE_BARS.length} stacked bars, got ${bars.length}`);
+    assert.equal(findNodes(ready.tree, (node) => String(node.props.className ?? "").includes("ssp-candle-body")).length, 0);
+    assert.ok(readyText.includes("按模型堆叠"));
   },
-  "7 bars, >=3 model colors",
+  "bars by default",
+);
+
+const candleRender = renderPage({ overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE, view: "candles" });
+check(
+  "candles mode renders OHLC bodies, wicks and three MA lines",
+  () => {
+    const bodies = findNodes(candleRender.tree, (node) => String(node.props.className ?? "").includes("ssp-candle-body"));
+    assert.equal(bodies.length, SAMPLE_BARS.length);
+    const ma = findNodes(candleRender.tree, (node) => String(node.props.className ?? "").includes("ssp-ma"));
+    assert.equal(ma.length, 3);
+    const paths = findNodes(candleRender.tree, (node) => node.type === "path" && String(node.props.className ?? "").includes("ssp-candle-wick"));
+    assert.ok(paths.length >= 1, "wick paths");
+    assert.ok(candleRender.text.some((value) => value.startsWith("MA5")));
+    // <title> per candle for accessibility.
+    const titles = findNodes(candleRender.tree, (node) => node.type === "title");
+    assert.equal(titles.length, SAMPLE_BARS.length);
+  },
+  "5 bodies / 3 MA / titles",
 );
 
 check(
-  "donut card is split by model and keeps the centre total",
+  "watchlist lists every model plus the ALL row",
   () => {
-    assert.ok(readyText.includes("Token 构成"));
-    assert.ok(readyText.includes("按模型"));
-    const donutValues = readyText.filter((text) => text === "764.9M");
-    assert.ok(donutValues.length >= 2, "total shown on the card and in the donut centre");
-    for (const label of ["deepseek-v4.1-flash", "deepseek-v4-pro", "kimi-k3", "claude-opus-4.1"]) {
-      assert.ok(readyText.includes(label), label);
-    }
-    assert.ok(readyText.includes("¥47.48"));
+    const rows = findNodes(ready.tree, (node) => String(node.props.className ?? "").includes("ssp-watch-row") && node.type === "button");
+    assert.equal(rows.length, SAMPLE_TERMINAL.symbols.length + 1);
+    for (const item of SAMPLE_TERMINAL.symbols) assert.ok(readyText.includes(item.code), item.code);
   },
-  "764.9M centre + 4 model legend rows",
+  "ALL + 3 models",
 );
 
 check(
-  "donut segments use >=3 palette colors",
+  "tape lists recent activity and marks search with the gold dot",
   () => {
-    const segments = findElements(ready.tree, (node) => node.props.className === "ssp-donut-seg");
-    const colors = new Set(segments.map((node) => node.props.style.stroke));
-    assert.ok(segments.length >= 3);
-    assert.ok(colors.size >= 3, `expected >=3 donut colors, got ${colors.size}`);
-    const palette = new Set([...SAMPLE_OVERVIEW.modelPalette, SAMPLE_OVERVIEW.otherModelColor]);
-    for (const color of colors) assert.ok(palette.has(color), `color ${color} is not from the response palette`);
+    const rows = findNodes(ready.tree, (node) => node.props.className === "ssp-tape-row");
+    assert.equal(rows.length, SAMPLE_TERMINAL.tape.length);
+    assert.ok(readyText.some((value) => value.includes("SEARCH")));
+    const gold = findNodes(ready.tree, (node) => String(node.props.className ?? "").includes("ssp-tape-dot-search"));
+    assert.equal(gold.length, 1);
   },
-  "4 slices / 4 colors",
+  "3 rows + gold search dot",
 );
 
 check(
-  "model legend rows and detail rows cover every model",
+  "positions table covers every symbol and marks unpriced rows",
   () => {
-    const legendRows = findElements(ready.tree, (node) => node.props.className === "ssp-model-legend-row");
-    const detailRows = findElements(ready.tree, (node) => node.props.className === "ssp-model-row");
-    assert.equal(legendRows.length, SAMPLE_OVERVIEW.models.filter((model) => model.costsOnly !== true).length);
-    assert.equal(detailRows.length, SAMPLE_OVERVIEW.models.filter((model) => model.costsOnly !== true).length);
-    const detailText = renderText(detailRows);
-    assert.ok(detailText.includes("deepseek-v4.1-flash"));
-    assert.ok(detailText.includes("520M"));
-    assert.ok(detailText.includes("44.9M"));
-    assert.ok(readyText.includes("分模型明细"));
+    const rows = findNodes(ready.tree, (node) => String(node.props.className ?? "").startsWith("ssp-pos-row"));
+    assert.equal(rows.length, SAMPLE_TERMINAL.symbols.length + 1, "header + 3 rows");
+    assert.ok(readyText.includes("未计价"));
   },
-  "4 legend rows / 5 detail rows",
+  "header + 3 rows",
 );
 
 check(
-  "no unresolved locale keys or NaN in rendered output",
+  "status bar shows window, sessions, sample time and price table",
   () => {
-    const bad = readyText.filter((text) =>
-      /^(panel|window|currency|cards?|unit|live|daily|donut|composition|state)\./.test(text) || /NaN|undefined/.test(text),
-    );
+    assert.ok(readyText.some((value) => value.includes("行情数据")));
+    assert.ok(readyText.some((value) => value.includes("22 个会话")));
+    assert.ok(readyText.some((value) => value.includes("采样")));
+    assert.ok(readyText.some((value) => value.includes("vendor-official-2026-11")));
+  },
+  "status bar",
+);
+
+const usd = renderPage({ currency: "USD", overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE });
+check(
+  "USD currency flows into cost labels",
+  () => {
+    assert.ok(usd.text.some((value) => value.startsWith("$")));
+  },
+  "$ labels",
+);
+
+const empty = renderPage({ overview: null });
+check(
+  "empty state says receiving market data without NaN",
+  () => {
+    assert.ok(empty.text.includes("正在接收行情数据…"));
+    assert.ok(!empty.text.some((value) => /NaN|undefined/.test(value)));
+  },
+  "receiving… / no NaN",
+);
+
+const failed = renderPage({ overview: null, error: "HTTP 500" });
+check(
+  "error banner shows message and retry",
+  () => {
+    assert.ok(failed.text.some((value) => value.includes("统计数据加载失败")));
+    assert.ok(failed.text.includes("重试"));
+  },
+  "HTTP 500 / 重试",
+);
+
+check(
+  "no unresolved locale keys in rendered output",
+  () => {
+    const bad = readyText.filter((value) => /^(index|stats|watch|tape|positions|status|chart|view|priceMode|terminal|state)\./.test(value) || /NaN|undefined/.test(value));
     assert.deepEqual(bad, []);
   },
   "clean",
 );
 
-const usd = renderPage({ currency: "USD", overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE });
-check(
-  "USD toggle derives display from the USD field",
-  () => {
-    assert.ok(usd.text.includes("$6.69"), "USD cost");
-    assert.ok(!usd.text.includes("¥47.48"), "CNY value hidden while USD is selected");
-  },
-  "$6.69",
-);
-
-check(
-  "official search row: tokens —, share 按次, per-request cost",
-  () => {
-    const rows = findElements(ready.tree, (node) => node.props.className === "ssp-model-row ssp-model-row-search");
-    assert.equal(rows.length, 1, "one synthetic search row");
-    const text = renderText(rows);
-    assert.ok(text.includes("官方搜索"), "label");
-    assert.ok(text.includes("· DeepSeek"), "vendor");
-    assert.ok(text.includes("—"), "tokens placeholder");
-    assert.ok(text.includes("按次"), "per-request share");
-    assert.ok(text.includes("¥0.02"), "search cost");
-    const titles = findElements(ready.tree, (node) => typeof node.props.title === "string").map((node) => node.props.title);
-    assert.ok(titles.some((value) => value.includes("¥5 / 1000 次成功请求")), "per-request tooltip");
-    // The 0-token row must never enter the token legend / donut.
-    const legend = renderText(findElements(ready.tree, (node) => node.props.className === "ssp-model-legend-row"));
-    assert.ok(!legend.includes("官方搜索"), "search row stays out of the legend");
-  },
-  "官方搜索 · — · 按次 · ¥0.02",
-);
-
-// Unpriced models are excluded from the amount and stated in the detail footer.
-check(
-  "unpriced models show 未计价 and a footer note",
-  () => {
-    const foot = readyText.filter((value) => value.includes("无官方定价，未计入金额"));
-    assert.ok(foot.length > 0, "detail footer note");
-    assert.ok(foot.some((value) => /1 个模型无官方定价，未计入金额（tokens 44\.9M）/.test(value)), "footer count and tokens");
-    assert.ok(readyText.some((value) => value.includes("未计价")), "unpriced cost label");
-    assert.ok(readyText.some((value) => value.includes("· 月之暗面")), "vendor label on Kimi row");
-    assert.ok(readyText.some((value) => value.includes("· Anthropic")), "vendor label on unpriced row");
-    assert.ok(readyText.some((value) => value.includes("· DeepSeek")), "vendor label on official row");
-    const titles = findElements(ready.tree, (node) => typeof node.props.title === "string").map((node) => node.props.title);
-    assert.ok(titles.some((value) => value.includes("价格来源：DeepSeek官方价目 · 元/百万 token")), "official price-source tooltip");
-    assert.ok(titles.some((value) => value.includes("无官方定价，未计入金额")), "unpriced tooltip");
-  },
-  "footer + 未计价 + vendor labels",
-);
-
-// More than ten models: the palette overflows into a neutral "other" slice.
-const manyModels = Array.from({ length: 12 }, (_, index) => ({
-  provider: "prov",
-  model: `model-${index + 1}`,
-  route: `prov/model-${index + 1}`,
-  label: `model-${index + 1}`,
-  color: index < 10 ? PALETTE[index] : OTHER_COLOR,
-  tokens: (12 - index) * 1_000_000,
-  costCNY: 1,
-  costUSD: 0.14,
-  share: 1 / 78,
-  events: 1,
-  priced: true,
-  vendor: "openai",
-  priceLevel: "official",
-  sourceUrl: "https://developers.openai.com/api/docs/pricing.md",
-}));
-const manyOverview = {
-  ...SAMPLE_OVERVIEW,
-  totals: { ...SAMPLE_OVERVIEW.totals, tokens: 78_000_000, costCNY: 12, costUSD: 1.69 },
-  models: manyModels,
-  daily: SAMPLE_OVERVIEW.daily.map((day) => ({ ...day, models: [] })),
-};
-const many = renderPage({ overview: manyOverview, live: SAMPLE_LIVE });
-check(
-  "more than ten models collapse into one 'other' slice",
-  () => {
-    const legendRows = findElements(many.tree, (node) => node.props.className === "ssp-model-legend-row");
-    assert.equal(legendRows.length, 11, "10 palette models + other");
-    assert.ok(many.text.includes("其他"));
-    const segments = findElements(many.tree, (node) => node.props.className === "ssp-donut-seg");
-    const colors = segments.map((node) => node.props.style.stroke);
-    assert.ok(colors.includes(OTHER_COLOR), "other slice uses the neutral color");
-    assert.equal(new Set(colors).size, 11);
-  },
-  "10 + other",
-);
-
-const hostDefault = renderPage({
-  windowKey: null,
-  overview: {
-    ...SAMPLE_OVERVIEW,
-    window: { ...SAMPLE_OVERVIEW.window, key: "30d", label: "近 30 天", labelEn: "Last 30 days", points: SAMPLE_OVERVIEW.window.points },
-  },
-  live: SAMPLE_LIVE,
-});
-check(
-  "host default window is adopted until the user picks a tab",
-  () => {
-    assert.ok(hostDefault.text.includes("按 token 堆叠 · 近 30 天"));
-  },
-  "follows host default 30d",
-);
-
-const loading = renderPage({});
-check(
-  "loading state renders placeholders without crashing",
-  () => {
-    const text = loading.text;
-    assert.ok(text.includes("会话统计"));
-    assert.ok(text.includes("—"));
-    assert.ok(!text.some((value) => /NaN|undefined/.test(value)));
-  },
-  "placeholders only",
-);
-
-const failed = renderPage({ error: "HTTP 500" });
-check(
-  "error banner shows the message and a retry button",
-  () => {
-    assert.ok(failed.text.some((value) => value.includes("统计数据加载失败") && value.includes("HTTP 500")));
-    assert.ok(failed.text.includes("重试"));
-  },
-  "统计数据加载失败：HTTP 500 / 重试",
-);
-
-const empty = renderPage({
-  overview: {
-    ...SAMPLE_OVERVIEW,
-    totals: { ...SAMPLE_OVERVIEW.totals, tokens: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costCNY: 0, costUSD: 0, cacheHitRate: 0, sessions: 0, avgTokensPerSession: 0 },
-    composition: [],
-    daily: SAMPLE_OVERVIEW.daily.map((day) => ({ ...day, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, tokens: 0, costCNY: 0, costUSD: 0 })),
-    models: [],
-  },
-  live: SAMPLE_LIVE,
-});
-check(
-  "zero-usage payload renders zeros and an empty donut track",
-  () => {
-    assert.ok(empty.text.includes("0.0%"));
-    assert.ok(!empty.text.some((value) => /NaN|undefined/.test(value)));
-  },
-  "zeros, no NaN",
-);
-
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// View mode: the original stats layout is the default, the terminal is a skin
+// ---------------------------------------------------------------------------
+const statsPage = renderPage({ mode: "stats", overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE });
+check(
+  "stats mode is the default view and keeps every original card",
+  () => {
+    for (const label of ["总 Token 消耗", "预估成本", "会话数", "缓存命中率"]) assert.ok(statsPage.text.includes(label), label);
+    assert.ok(statsPage.text.some((value) => value.includes("DSH 运行状态")));
+    assert.ok(statsPage.text.includes("每日消耗"));
+    assert.ok(statsPage.text.includes("Token 构成"));
+    assert.ok(statsPage.text.includes("成本构成"));
+    assert.ok(statsPage.text.includes("分模型明细"));
+    // The playful terminal furniture must not leak into the primary view.
+    for (const absent of ["今开", "自选行情", "成交流水", "持仓明细", "SESSION TERMINAL"]) {
+      assert.ok(!statsPage.text.includes(absent), "terminal-only copy in stats view: " + absent);
+    }
+  },
+  "4 cards + live + 3 charts + detail",
+);
+
+check(
+  "both views expose the same 统计 / K线 switch",
+  () => {
+    const buttons = (tree) => findNodes(tree, (node) => node.type === "button" && typeof node.props.className === "string" && node.props.className.includes("ssp-view-btn")).map((node) => node.props.children);
+    for (const mode of ["stats", "terminal"]) {
+      const page = renderPage({ mode, overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE });
+      const labels = buttons(page.tree).flat(Infinity).filter((value) => typeof value === "string");
+      assert.ok(labels.includes("统计"), mode + " has 统计");
+      assert.ok(labels.includes("K线"), mode + " has K线");
+    }
+  },
+  "统计 + K线 in both",
+);
+
+check(
+  "view mode is remembered under its own localStorage key",
+  () => {
+    const source = readFileSync(sourcePath, "utf8");
+    assert.ok(source.includes("dsh-session-stats:mode"), "mode storage key");
+    assert.ok(/getItem\("dsh-session-stats:mode"\) === "terminal" \? "terminal" : "stats"/.test(source), "defaults to stats");
+  },
+  "dsh-session-stats:mode, default stats",
+);
+
+check(
+  "the old single-layout page never renders as the default",
+  () => {
+    assert.ok(!statsPage.text.includes("行情走势"), "terminal chart title leaked into stats view");
+    assert.ok(ready.text.includes("行情走势"));
+  },
+  "isolated views",
+);
+
 // Report
 // ---------------------------------------------------------------------------
 console.log("");
+check("live card shows core count only, never a load-average number", () => {
+  const text = renderPage({ mode: "stats", overview: SAMPLE_OVERVIEW, live: SAMPLE_LIVE }).text;
+  assert.ok(text.some((value) => value.includes("11 核")), "core count");
+  assert.ok(!text.some((value) => /负载|load\/core|loadavg/i.test(value)), "no load-average copy");
+});
+
 for (const result of results) {
   if (result.ok) {
     console.log(`  ok  ${result.name}${result.actual === undefined ? "" : `  →  ${result.actual}`}`);

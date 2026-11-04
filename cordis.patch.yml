@@ -10,16 +10,38 @@
 # 卸载：
 #   dsh plugin --profile web remove dsh-session-stats-panel
 #
+# 注意：loader id 不能与官方 bundle 撞车。官方 @deepseek-ai/dsh-session-stats
+# （dsh-web-app/cordis.patch.yml:102）已经用了 `session-stats`，且加载器
+# 按 id 建表、后加载覆盖先加载 —— 用同一个 id 会让官方 sessionStats 投影
+# 永远挂不上。这里必须用带 -panel 后缀的 id。
+#
 # config 里是可选配置；全部键都有内置默认值，删掉同样能跑。
 # ============================================================================
 
 - insert:
-    - id: session-stats
+    - id: session-stats-panel
       name: dsh-session-stats-panel
       config:
         # 显示用 USD 汇率（CNY 为权威口径，USD 仅派生显示）。
         usdRate: 7.1
         # 默认时间档：24h | 7d | 14d | 30d
         window: 7d
+        # 自然日/小时桶使用的 IANA 时区。默认北京时间；非中国用户改成自己的区，
+        # 例如 "Europe/Berlin" / "America/New_York"，否则「近 7 天」的日界会错位。
+        # 注意：DeepSeek 峰谷价的时段是官方按北京时间定义的，不随此项变化。
+        timeZone: Asia/Shanghai
+        # 是否信任私有网段的 Host（192.168/10/172.16/链路本地/*.local），
+        # 用于「用手机或另一台机器通过局域网 IP 打开 WebUI」。默认 false（最安全）。
+        # 公网域名始终被拒（防 DNS rebinding 读取本地会话日志）；
+        # 反代场景请改用 allowedHosts 精确列出你的域名。
+        allowPrivateHosts: false
+        # 额外放行的 Host 名（反代域名等），精确匹配。
+        allowedHosts: []
+        # 峰谷价的节假日表。不写这两项 = 使用内置的 2026 年表
+        # （33 个放假日 + 6 个调休上班日，依据国办发明电〔2025〕7号）。
+        # 写了但给空数组 [] = 显式清空（全部按「周一至周五 9-12/14-18」算峰价）。
+        # 跨年后请更新内置表，或在这里显式给新的一年日期。
+        # holidays: ["2027-01-01"]
+        # makeupWorkdays: ["2027-01-04"]
         # overview 响应缓存毫秒数；0 表示每次请求都重算（会话级增量缓存仍生效）。
         ttlMs: 60000

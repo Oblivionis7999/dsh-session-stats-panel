@@ -26,6 +26,16 @@
 
 ![深色预览](docs/preview-dark.png)
 
+## 安装约定：loader id 不能与官方包撞车
+
+`cordis.patch.yml` 里的 `id` 是 **loader 表的键**，DSH 按 id 合并 bundle 补丁，**后加载的覆盖先加载的**。
+
+官方 `@deepseek-ai/dsh-session-stats`（在 `dsh-web-app/cordis.patch.yml` 里）已经占用了 `id: session-stats`，它注册的是宿主侧 `sessionStats` 投影（tok/s、墙钟时间）。如果本插件也用 `session-stats`，官方那个投影会**静默不挂载**——界面看不出异常，只是流式输出的计时数据缺失。
+
+因此本插件的 loader id 固定为 **`session-stats-panel`**，并由 `tools/selfcheck.mjs` 断言守住，防止回退。
+
+> 插件内部的 `NS` / `PANEL_ID` / `/session-stats/api/*` 属于浏览器与 HTTP 命名空间，与 loader id 无关，可以保持原样。
+
 ## 安装
 
 把仓库克隆/下载到任意目录，下面用 `<插件目录>` 表示它的绝对路径。
@@ -89,7 +99,7 @@ dsh-session-stats-panel/
 | 预估成本 | **原厂官方价目**本地估算：DeepSeek 按峰/谷逐条计价，其它厂商平铺单价，海外厂商 USD 按 `usdRate` 折算。查不到官方价目的模型 `priceLevel:"unpriced"`、成本记 0，明细成本列显示「未计价」，表底灰字提示「N 个模型无官方定价，未计入金额（tokens x.xxM）」。 |
 | 会话数 | 窗口内至少有一条 usage 事件的会话数；副行给每会话平均 token。 |
 | 缓存命中率 | `缓存读取 / (未缓存输入 + 缓存读取 + 缓存写入)`，副行给缓存读取量。 |
-| DSH 运行状态 | 每 5 秒采样 CPU（单核 %、整机 %、核数、负载）、RSS/堆、事件循环 p99/均值、运行时长、PID、Node 版本；底部是 60 点（5s × 60 = 300s）CPU 环形缓冲折线。 |
+| DSH 运行状态 | 每 5 秒采样 CPU（进程 %、整机 %、核数）、RSS/堆、事件循环 p99/均值、运行时长、PID、Node 版本；底部是 60 点（5s × 60 = 300s）CPU 环形缓冲折线。 |
 | 每日消耗 | **按模型**分色堆叠的柱状图（同一天内按模型 token 占比分段），柱下方图例最多 6 个模型 +「其他」，右上角给窗口总量与成本。 |
 | Token 构成 | **按模型**分段的环形图，中心仍是总量 + `tokens` + 成本；图例每行 = 色块 + 模型名 + 占比% + tokens + 成本。 |
 | 分模型明细 | 第三张卡（整行）：色块 + 模型名（+ provider）+ 占比条 + tokens + 占比 + 成本，按 token 降序。 |
@@ -213,6 +223,16 @@ MiMo→小米、LongCat→美团。转售/聚合平台价（OpenCode Zen 等）�
 > `OFFICIAL_PRICE_TABLE`（`PRICE_TABLE_VERSION` 会出现在响应里便于排查）。
 > 已核验数字都带 `sourceUrl` + `verifiedAt: "2026-11-04"`。
 
+## 页面（2.0：行情终端）
+
+整个面板改成 A 股行情终端风：顶栏（时间档 · 币种 · **柱状/K线**切换）→ 指数条（总消耗/预估成本/会话数/缓存命中率/官方搜索，各带涨跌徽标与迷你 K）→ 品种头（现价、涨跌、今开/最高/最低/均价/振幅）→ 主图（MA5/10/20 + 分模型堆叠成交量 + 十字光标 + OHLC 浮窗）→ 自选行情（模型当个股，代码 `MDL-01…`）｜成交流水（chat 红绿点、search 金点）→ 持仓明细 → 状态栏。
+
+- **柱状 / K线** 只切换主图渲染，数据同一份 `terminal.candles`：柱=该根 `tokens` 按模型堆叠，K线=OHLC 蜡烛。默认「柱状」，选择存 `localStorage: dsh-session-stats:chart`；切换不重新请求。
+- 蜡烛价格 = 采样桶 token 速率（tokens/分钟，可切 ¥/分钟）；成交量 = 该时段调用次数；涨跌基准 = 窗口第一根 K 的 O；空桶前值结转（o=h=l=c=上一根 c，`vol=0`，柱状用极淡斜纹表示）。
+- 周期：24h→5m（288 根）、7d→1h（168）、14d→2h（168）、30d→1d（30）；采样桶 ≤ 周期/4（1m / 15m / 15m / 1h）。
+- A 股配色：红涨绿跌（深色 up `#FF4D4F` / down `#00C08B`，浅色 up `#DD3538` / down `#0B9D6E`），涨=实心+▲、跌=空心+▼、平=灰。
+- 数据全部塞在 `terminal` 命名空间（`terminal.indices/symbols/candles/tape`），原有 `totals/models/daily/composition/costComposition` 不变。
+
 ## 官方搜索（server-tool-search）
 
 DSH 的联网搜索走 `dsh-web-search-deepseek`，**每次搜索是一次独立 API 调用**，并在会话日志里留下一条
@@ -236,6 +256,19 @@ DSH 的联网搜索走 `dsh-web-search-deepseek`，**每次搜索是一次独立
   （0 token 会让占比失真），只出现在「分模型明细」表与成本卡副行。
 - `pricing.search = { unit: "per-request", priceCNY: 0.005, note: "¥5 / 1000 次成功请求" }`。
 
+### 成本构成（第三张环形图）
+
+「每日消耗 / Token 构成 / 成本构成」三张卡在桌面端等宽三列（<1100px 两列、<720px 一列）。
+成本环形的口径：
+
+- 切片来自 `costComposition`：`{ key, route, label, vendor, color, costCNY, share }`，按 `costCNY` 降序。
+- `share = costCNY / totals.costCNYTotal`（**含官方搜索费**），所以环形占比与成本卡主数字一致。
+- 颜色复用 `models[].color`（与 token 环形图同一模型同一颜色）；`official/server-tool-search`
+  用中性灰 `otherModelColor`。
+- **未计价模型成本为 0，不进入成本环形**（否则会出现 0 占比的空切片）；它们仍在「分模型明细」里以
+  「未计价」展示。0 成本/空数据时环形只画轨道、中心显示 `—`。
+- `composition`（token 四桶）字段保持不变，向后兼容。
+
 ## 配置项（`cordis.patch.yml` 的 `config`，全部可选）
 
 | 键 | 默认 | 说明 |
@@ -248,14 +281,38 @@ DSH 的联网搜索走 `dsh-web-search-deepseek`，**每次搜索是一次独立
 | `sessionConcurrency` | `3` | 扫描时并发 `readSession` 数（1–16）。 |
 | `readTimeoutMs` | `10000` | 单会话读取超时。 |
 | `maxSessions` | `5000` | 单次响应最多折叠的会话数。 |
-| `allowedHosts` | `[]` | 除 `127.0.0.1` / `localhost` / `[::1]` 外额外放行的 Host。 |
-| `holidays` | `[]` | 按谷价计费的北京日期，如 `["2026-10-01"]`。 |
+| `allowedHosts` | `[]` | 额外放行的 Host（精确匹配）。反代/自定义域名填这里。 |
+| `allowPrivateHosts` | `false` | 信任私有网段 Host（`192.168/10/172.16/169.254`、`*.local`、单标签主机名）。用手机或另一台机器通过局域网 IP 打开时需要打开；**公网域名始终拒绝**。 |
+| `timeZone` | `"Asia/Shanghai"` | 自然日/小时桶使用的 IANA 时区。非中国用户改成自己的区，否则「近 7 天」日界与 K 线横轴按北京时间切。**DeepSeek 峰谷时段是官方按北京时间定义的，不随此项变化。** |
+| `holidays` | 内置 2026 表 | 按谷价计费的北京日期。**默认已内置 2026 年中国法定节假日 33 天**（依据 [国办发明电〔2025〕7号](https://www.gov.cn/zhengce/content/202511/content_7047090.htm)）。传 `[]` 表示显式清空。 |
+| `makeupWorkdays` | 内置 2026 表 | 调休上班的周末（按**工作日**算峰价）。默认内置 2026 年 6 天：`2026-01-04`、`02-14`、`02-28`、`05-09`、`09-20`、`10-10`。 |
 | `debug` | `false` | 打开后输出扫描明细日志。 |
+
+### 峰谷价的节假日口径
+
+DeepSeek 只对**工作日**的 09:00–12:00 / 14:00–18:00 收峰价，其余时段（含周末、法定节假日）为谷价。
+这里有两个只用「周末判断」会算错的地方，插件都已处理：
+
+| 情况 | 举例 | 正确处理 |
+|---|---|---|
+| 长假中间的**工作日** | 2026-02-16（周一，春节假期内） | 按假期 → **谷价**（若当工作日会虚高 100%） |
+| **调休上班的周末** | 2026-02-14（周六，春节调休） | 按工作日 → **峰价**（若当周末会少算 50%） |
+
+峰谷时段本身是官方按**北京时间**定义的，所以它不跟随 `timeZone` 变化；`timeZone` 只影响「日/小时桶怎么切」。
 
 ## HTTP API（仅本机）
 
-两条 `exact` 路由都由宿主半注册，`Cache-Control: no-store`；`Host` 头不是
-`127.0.0.1` / `localhost` / `[::1]` 的请求一律 `403`（可用 `allowedHosts` 放宽）。
+两条 `exact` 路由都由宿主半注册，`Cache-Control: no-store`。
+
+`Host` 校验默认只放行回环地址（`127.0.0.1` / `localhost` / `[::1]`），其余一律 `403`，
+而且 403 的响应体会直接告诉你该开哪个开关。放宽有两种方式：
+
+- `allowPrivateHosts: true` —— 放行私有网段 / `*.local` / 单标签主机名。适合「用手机或另一台
+  电脑通过局域网 IP 打开 WebUI」。公网域名仍然拒绝。
+- `allowedHosts: ["stats.example.com"]` —— 精确放行某个反向代理域名。
+
+> 默认从严是刻意的：这两条接口会读出本机**全部会话日志**。若对任意 Host 开放，
+> 一个 DNS rebinding 页面就能把内容读走。
 
 ### `GET /session-stats/api/overview?window=24h|7d|14d|30d`
 
@@ -308,7 +365,7 @@ DSH 的联网搜索走 `dsh-web-search-deepseek`，**每次搜索是一次独立
 ```jsonc
 {
   "ok": true, "sampledAt": 0, "intervalMs": 5000, "points": 60, "windowSec": 300,
-  "cpu": { "single": 0.0, "machine": 0.0, "cores": 11, "loadavg": 0.0 },
+  "cpu": { "single": 0.0, "machine": 0.0, "cores": 11 },
   "memory": { "rssMB": 619, "heapUsedMB": 190, "heapTotalMB": 240,
               "externalMB": 6, "arrayBuffersMB": 2 },
   "eventLoop": { "p99ms": 121.2, "meanMs": 25.5, "resolutionMs": 10 },

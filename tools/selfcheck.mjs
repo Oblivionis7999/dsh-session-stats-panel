@@ -11,8 +11,11 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
+  CN_HOLIDAYS_2026,
+  CN_MAKEUP_WORKDAYS_2026,
   PRICE_TABLE_VERSION,
   SEARCH_REQUEST_PRICE_CNY,
   costOfUsage,
@@ -23,12 +26,14 @@ import {
   searchCost,
 } from "../lib/pricing.js";
 import {
+  CANDLE_SPECS,
   DEFAULT_USD_RATE,
   MODEL_PALETTE,
   OTHER_MODEL_COLOR,
   buildOverview,
   dayIndexOf,
   resolveWindow,
+  zoneOffsetMs,
   summarizeSessionEvents,
 } from "../lib/aggregate.js";
 import { formatUptime, normalizeConfig } from "../lib/index.js";
@@ -419,6 +424,101 @@ check(
 );
 
 check(
+  "costComposition: cost shares over costCNYTotal, search slice grey",
+  () => {
+    const slices = overview.costComposition;
+    assert.ok(Array.isArray(slices) && slices.length >= 2, "expected at least two cost slices");
+    const sum = slices.reduce((total, slice) => total + slice.costCNY, 0);
+    closeTo(sum, overview.totals.costCNYTotal, 1e-9);
+    const shareSum = slices.reduce((total, slice) => total + slice.share, 0);
+    closeTo(shareSum, 1, 1e-4);
+    const searchSlice = slices.find((slice) => slice.route === "official/server-tool-search");
+    assert.ok(searchSlice !== undefined, "search cost slice must exist");
+    assert.equal(searchSlice.color, OTHER_MODEL_COLOR);
+    closeTo(searchSlice.costCNY, 0.015);
+    // Same model → same colour as the token donut.
+    for (const slice of slices) {
+      const model = overview.models.find((entry) => entry.route === slice.route);
+      assert.ok(model !== undefined, `slice ${slice.route} must come from models[]`);
+      assert.equal(slice.color, model.color, `${slice.route} colour must match models[].color`);
+      assert.equal(slice.label, model.label);
+      assert.equal(slice.vendor, model.vendor);
+    }
+    // Unpriced models cost 0 and are excluded from the cost donut.
+    assert.equal(slices.some((slice) => slice.route === "anthropic/claude-opus-4.1"), false);
+    // Sorted by cost, descending.
+    for (let index = 1; index < slices.length; index += 1) {
+      assert.ok(slices[index - 1].costCNY >= slices[index].costCNY, "slices sorted by cost");
+    }
+  },
+  "slices sum to costCNYTotal · search grey · colours match models",
+);
+
+check(
+  "costComposition handles a single model",
+  () => {
+    const single = summarizeSessionEvents("session-single", [events[0]], { pricing, now: NOW });
+    const one = buildOverview([single], { windowKey: "7d", now: NOW, pricing, usdRate: DEFAULT_USD_RATE });
+    assert.equal(one.costComposition.length, 1);
+    assert.equal(one.costComposition[0].share, 1);
+    closeTo(one.costComposition[0].costCNY, one.totals.costCNYTotal);
+    // Empty corpus → empty array, never NaN.
+    const empty = buildOverview([], { windowKey: "7d", now: NOW, pricing, usdRate: DEFAULT_USD_RATE });
+    assert.deepEqual(empty.costComposition, []);
+  },
+  "1 slice / empty array",
+);
+
+check(
+  "terminal: candles OHLC, empty-bar carry, symbols/indices/tape",
+  () => {
+    const terminal = overview.terminal;
+    assert.ok(terminal !== null && typeof terminal === "object");
+    const candles = terminal.candles;
+    const spec = CANDLE_SPECS[overview.window.key];
+    assert.equal(candles.period, spec.period);
+    assert.equal(candles.bars.length, spec.bars);
+    for (const bar of candles.bars) {
+      assert.ok(bar.h >= Math.max(bar.o, bar.c) - 1e-9, "high >= max(open, close)");
+      assert.ok(bar.l <= Math.min(bar.o, bar.c) + 1e-9, "low <= min(open, close)");
+      if (bar.empty) {
+        assert.equal(bar.vol, 0);
+        assert.equal(bar.tokens, 0);
+      }
+    }
+    // An empty bar carries the previous close forward.
+    for (let index = 1; index < candles.bars.length; index += 1) {
+      const bar = candles.bars[index];
+      if (!bar.empty) continue;
+      assert.equal(bar.o, candles.bars[index - 1].c);
+      assert.equal(bar.c, candles.bars[index - 1].c);
+    }
+    // Symbols mirror models numbers and never invent prices.
+    for (const symbol of terminal.symbols) {
+      const model = overview.models.find((entry) => entry.route === symbol.route);
+      assert.ok(model !== undefined, `symbol ${symbol.route} must come from models[]`);
+      assert.equal(symbol.tokens, model.tokens);
+      assert.equal(symbol.costCNY, model.costCNY);
+      assert.equal(symbol.unpriced, model.priceLevel === "unpriced");
+      assert.ok(symbol.code.startsWith("MDL-"));
+    }
+    // Five indices, change compared with the previous equal-length window.
+    assert.deepEqual(terminal.indices.map((item) => item.key), ["tokens", "cost", "sessions", "cacheHit", "search"]);
+    for (const item of terminal.indices) {
+      assert.equal(item.spark.length, 12);
+      assert.ok(item.chgPct === null || Number.isFinite(item.chgPct));
+    }
+    // Tape: newest first, at most 20, search entries marked.
+    assert.ok(terminal.tape.length <= 20);
+    for (let index = 1; index < terminal.tape.length; index += 1) {
+      assert.ok(terminal.tape[index - 1].t >= terminal.tape[index].t, "tape is descending");
+    }
+    assert.ok(terminal.tape.some((entry) => entry.kind === "search"));
+  },
+  "288/168/30 bars · carry · 5 indices · tape desc",
+);
+
+check(
   "no search events → no synthetic row, zero search cost",
   () => {
     const usageOnly = events.filter((event) => !String(event.type).includes("search"));
@@ -656,6 +756,88 @@ check(
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Loader id must not collide with an official bundle entry
+// ---------------------------------------------------------------------------
+// The loader keys bundle entries by `id`, and a later patch overwrites an
+// earlier one. The official @deepseek-ai/dsh-session-stats already claims
+// `id: session-stats`; reusing it silently unmounts the official
+// `sessionStats` projection. Guard the id so a future edit cannot regress.
+check("cordis.patch.yml keeps a non-colliding loader id", () => {
+  const patch = readFileSync(new URL("../cordis.patch.yml", import.meta.url), "utf8");
+  const ids = [...patch.matchAll(/^\s*-?\s*id:\s*([A-Za-z0-9_.-]+)\s*$/gm)].map((m) => m[1]);
+  assert.deepEqual(ids, ["session-stats-panel"]);
+});
+
+// ---------------------------------------------------------------------------
+// Cross-machine behaviour: time zone and platform, not just this laptop
+// ---------------------------------------------------------------------------
+check("zoneOffsetMs follows real IANA zones (not a hard-coded +8)", () => {
+  const winter = Date.UTC(2026, 0, 15, 12, 0, 0);
+  const summer = Date.UTC(2026, 6, 15, 12, 0, 0);
+  assert.equal(zoneOffsetMs("Asia/Shanghai", winter), 8 * 3600_000);
+  assert.equal(zoneOffsetMs("Asia/Kolkata", winter), 5.5 * 3600_000);
+  assert.equal(zoneOffsetMs("UTC", winter), 0);
+  assert.equal(zoneOffsetMs("Europe/Berlin", winter), 1 * 3600_000);
+  assert.equal(zoneOffsetMs("Europe/Berlin", summer), 2 * 3600_000, "DST");
+  assert.equal(zoneOffsetMs("America/New_York", winter), -5 * 3600_000);
+  assert.equal(zoneOffsetMs("Not/AZone", winter), 8 * 3600_000, "falls back to Asia/Shanghai");
+});
+
+check("resolveWindow shifts day boundaries with the viewer's zone", () => {
+  const now = Date.UTC(2026, 10, 5, 4, 0, 0); // 12:00 Beijing
+  const sh = resolveWindow("7d", now, zoneOffsetMs("Asia/Shanghai", now));
+  const ny = resolveWindow("7d", now, zoneOffsetMs("America/New_York", now));
+  assert.equal(sh.buckets.length, 7);
+  assert.equal(ny.buckets.length, 7);
+  assert.notEqual(sh.from, ny.from, "different zones must not share a window start");
+  // Every bucket must be exactly one day wide regardless of the offset.
+  for (const w of [sh, ny]) {
+    for (const bucket of w.buckets) assert.equal(bucket.end - bucket.start, 86400_000);
+  }
+});
+
+check("dayIndexOf honours an explicit offset", () => {
+  const t = Date.UTC(2026, 10, 5, 20, 0, 0); // 04:00 next day in Beijing, 20:00 same day UTC
+  assert.equal(dayIndexOf(t, 8 * 3600_000) - dayIndexOf(t, 0), 1);
+});
+
+// ---------------------------------------------------------------------------
+// Chinese statutory holidays (国办发明电〔2025〕7号) drive peak/off-peak
+// ---------------------------------------------------------------------------
+const at2026 = (month, day, hour, minute = 0) =>
+  Date.parse(`2026-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+08:00`);
+
+check("2026 holiday calendar matches the State Council notice", () => {
+  assert.equal(CN_HOLIDAYS_2026.length, 33, "1+9+3+5+3+3+7 days");
+  assert.ok(CN_HOLIDAYS_2026.includes("2026-02-16"));
+  assert.ok(CN_HOLIDAYS_2026.includes("2026-10-05"));
+  assert.ok(!CN_HOLIDAYS_2026.includes("2026-02-14"), "a make-up workday is not a holiday");
+  assert.equal(CN_MAKEUP_WORKDAYS_2026.length, 6);
+});
+
+check("peak pricing uses the built-in calendar by default", () => {
+  const pricing = createPricing({ usdRate: 7.1 });
+  assert.equal(pricing.holidays.size, 33);
+  assert.equal(pricing.makeupWorkdays.size, 6);
+  // A weekday inside Spring Festival is billed off-peak.
+  assert.equal(isPeakTime(at2026(2, 16, 10), pricing), false, "春节周一");
+  // A make-up Saturday is billed peak again.
+  assert.equal(isPeakTime(at2026(2, 14, 10), pricing), true, "春节调休周六");
+  assert.equal(isPeakTime(at2026(10, 10, 10), pricing), true, "国庆调休周六");
+  // An ordinary working weekday still peaks; lunch break does not.
+  assert.equal(isPeakTime(at2026(3, 2, 10), pricing), true);
+  assert.equal(isPeakTime(at2026(3, 2, 13), pricing), false);
+  assert.equal(isPeakTime(at2026(3, 7, 10), pricing), false, "ordinary Saturday");
+});
+
+check("an explicit holidays list overrides the built-in calendar", () => {
+  const empty = createPricing({ holidays: [], makeupWorkdays: [] });
+  assert.equal(empty.holidays.size, 0);
+  // With no holidays the Spring Festival weekday peaks again.
+  assert.equal(isPeakTime(at2026(2, 16, 10), empty), true);
+});
+
 for (const result of results) {
   if (result.ok) {
     console.log(`  ok  ${result.name}${result.actual === undefined ? "" : `  →  ${result.actual}`}`);

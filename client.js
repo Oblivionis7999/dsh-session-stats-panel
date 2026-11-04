@@ -101,7 +101,10 @@ body[data-ds-dark-theme] .ssp-root{
 .ssp-spark-stop-start{stop-color:var(--ssp-accent);stop-opacity:.22}
 .ssp-spark-stop-end{stop-color:var(--ssp-accent);stop-opacity:0}
 .ssp-spark-empty{stroke:var(--ssp-border-strong);stroke-width:1;stroke-dasharray:3 4}
-.ssp-row{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.ssp-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
+@media (max-width:1100px){.ssp-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ssp-row>.ssp-cost-donut{grid-column:1/-1}}
+@media (max-width:720px){.ssp-row{grid-template-columns:minmax(0,1fr)}}
+.ssp-cost-legend-vendor{color:var(--ssp-text-3);font-size:11px}
 .ssp-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .ssp-card-title{font-size:15px;font-weight:600;line-height:22px}
 .ssp-card-sub{margin-top:2px;font-size:12px;line-height:18px;color:var(--ssp-text-3)}
@@ -163,7 +166,6 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 .ssp-root[data-loading=true] .ssp-cards,.ssp-root[data-loading=true] .ssp-row{opacity:.72;transition:opacity .15s}
 @media (max-width:900px){
   .ssp-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .ssp-row{grid-template-columns:minmax(0,1fr)}
   .ssp-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:720px){
@@ -176,6 +178,145 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 @media (prefers-reduced-motion:reduce){
   .ssp-tab,.ssp-cur,.ssp-bar,.ssp-donut-seg{transition:none}
 }
+/* ---- terminal (行情终端) ---- */
+.ssp-term{--up:#DD3538;--down:#0B9D6E;--gold:#B4841A;--grid:#ECF0F6;--axis:#D5DCE7;min-height:100%;padding:20px 22px 16px;background:var(--ssp-bg);color:var(--ssp-text-1)}
+body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--grid:#141A25;--axis:#232C3B}
+.ssp-term-page{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.ssp-term-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.ssp-term-title{font-size:22px;font-weight:650;line-height:28px;margin:0}
+.ssp-term-sub{display:block;font-size:10px;letter-spacing:.18em;color:var(--ssp-text-3);margin-top:2px}
+.ssp-term-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ssp-view-toggle{display:inline-flex;border:1px solid var(--ssp-border);border-radius:999px;padding:2px;background:var(--ssp-hover)}
+.ssp-view-btn{border:0;background:transparent;color:var(--ssp-text-3);font-size:11px;line-height:18px;padding:2px 9px;border-radius:999px;cursor:pointer;font-family:inherit}
+.ssp-view-btn.ssp-view-active{background:var(--ssp-bg);color:var(--ssp-text-1);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ssp-index-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.ssp-index{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--ssp-border);border-radius:12px;background:var(--ssp-bg);cursor:pointer;text-align:left;font-family:inherit}
+.ssp-index-active{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.ssp-index-label{font-size:11px;color:var(--ssp-text-3)}
+.ssp-index-row{display:flex;align-items:baseline;gap:4px}
+.ssp-index-value{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.ssp-index-unit{font-size:10px;color:var(--ssp-text-3)}
+.ssp-term-chg{font-size:11px;font-variant-numeric:tabular-nums}
+.ssp-term-chg-up{color:var(--up)}
+.ssp-term-chg-down{color:var(--down)}
+.ssp-term-chg-flat{color:var(--ssp-text-3)}
+.ssp-mini-k{width:100%;height:22px;display:block;margin-top:2px}
+.ssp-mini-wick-up{stroke:var(--up);stroke-width:.8;opacity:.8}
+.ssp-mini-wick-down{stroke:var(--down);stroke-width:.8;opacity:.8}
+.ssp-mini-body-up{fill:var(--up)}
+.ssp-mini-body-down{fill:none;stroke:var(--down);stroke-width:.8}
+.ssp-instrument{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:2px 2px 0}
+.ssp-instrument-name{font-size:13px;color:var(--ssp-text-3)}
+.ssp-instrument-price-row{display:flex;align-items:baseline;gap:8px;margin-top:2px}
+.ssp-instrument-price{font-size:30px;font-weight:700;line-height:36px;font-variant-numeric:tabular-nums}
+.ssp-instrument-unit{font-size:11px;color:var(--ssp-text-3)}
+.ssp-instrument-stats{display:flex;gap:18px;flex-wrap:wrap}
+.ssp-instrument-stat{display:flex;flex-direction:column;gap:1px}
+.ssp-instrument-stat-label{font-size:10px;color:var(--ssp-text-3)}
+.ssp-instrument-stat-value{font-size:13px;font-variant-numeric:tabular-nums}
+.ssp-term-chart-card{padding:12px 14px 10px}
+.ssp-term-chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.ssp-term-ohlc{font-size:11px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ssp-term-chart{position:relative;margin-top:6px}
+.ssp-term-chart svg{display:block;width:100%;height:auto}
+.ssp-term-grid-line{stroke:var(--grid);stroke-width:1}
+.ssp-term-axis-line{stroke:var(--axis);stroke-width:1}
+.ssp-term-axis{fill:var(--ssp-text-3);font-size:10px;font-variant-numeric:tabular-nums}
+.ssp-term-axis-hot{fill:var(--ssp-text-1)}
+.ssp-term-cross{stroke:var(--ssp-text-3);stroke-width:.8;stroke-dasharray:3 3;opacity:.7}
+.ssp-candle-wick-up{stroke:var(--up);stroke-width:1}
+.ssp-candle-wick-down{stroke:var(--down);stroke-width:1}
+.ssp-candle-body.ssp-candle-up{fill:var(--up)}
+.ssp-candle-body.ssp-candle-down{fill:none;stroke:var(--down);stroke-width:1}
+.ssp-candle-body.ssp-candle-flat{fill:var(--ssp-text-3)}
+.ssp-candle-body.ssp-candle-empty{fill:var(--grid)}
+.ssp-ma{stroke-width:1.2;opacity:.85;fill:none}
+.ssp-ma5{stroke:var(--gold)}
+.ssp-ma10{stroke:#4dabf7}
+.ssp-ma20{stroke:#9775fa}
+.ssp-term-legend{display:flex;gap:12px;align-items:center;font-size:11px;color:var(--ssp-text-3);margin-top:4px;flex-wrap:wrap}
+.ssp-term-legend-spacer{flex:1}
+.ssp-term-legend-item.ssp-ma5{color:var(--gold)}
+.ssp-term-legend-item.ssp-ma10{color:#4dabf7}
+.ssp-term-legend-item.ssp-ma20{color:#9775fa}
+.ssp-term-tip{position:absolute;top:8px;right:8px;min-width:200px;max-width:280px;background:var(--ssp-bg);border:1px solid var(--ssp-border);border-radius:10px;padding:8px 10px;box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:17px;z-index:5;pointer-events:none}
+.ssp-term-tip-left{right:auto;left:8px}
+.ssp-term-tip-head{font-weight:600;margin-bottom:4px}
+.ssp-term-tip-grid{display:flex;flex-wrap:wrap;gap:4px 12px;font-variant-numeric:tabular-nums}
+.ssp-term-tip-model{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ssp-term-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px}
+.ssp-watch-list,.ssp-tape-list{display:flex;flex-direction:column;margin-top:8px}
+.ssp-watch-row{display:grid;grid-template-columns:58px minmax(0,1fr) 76px 70px 66px 70px;align-items:center;gap:8px;padding:5px 2px;border:0;border-bottom:.5px solid var(--ssp-border);background:transparent;cursor:pointer;text-align:left;font-size:12px;color:var(--ssp-text-2);font-family:inherit}
+.ssp-watch-row:last-child{border-bottom:0}
+.ssp-watch-active{background:var(--ssp-hover)}
+.ssp-watch-code{font-size:11px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
+.ssp-watch-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ssp-watch-price{text-align:right;font-variant-numeric:tabular-nums}
+.ssp-watch-cost{text-align:right;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
+.ssp-tape-row{display:grid;grid-template-columns:64px 12px minmax(0,1fr) 70px 70px;align-items:center;gap:6px;padding:4px 2px;font-size:11px;color:var(--ssp-text-2);font-variant-numeric:tabular-nums}
+.ssp-tape-time{color:var(--ssp-text-3)}
+.ssp-tape-dot{width:7px;height:7px;border-radius:50%}
+.ssp-tape-dot-up{background:var(--up)}
+.ssp-tape-dot-down{background:var(--down)}
+.ssp-tape-dot-search{background:var(--gold)}
+.ssp-tape-model{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ssp-tape-tokens,.ssp-tape-cost{text-align:right;color:var(--ssp-text-3)}
+.ssp-pos-table{display:flex;flex-direction:column;margin-top:10px}
+.ssp-pos-row{display:grid;grid-template-columns:62px minmax(160px,1.6fr) 82px 66px minmax(90px,1fr) 90px 78px;align-items:center;gap:10px;padding:6px 2px;border-bottom:.5px solid var(--ssp-border);font-size:12px;color:var(--ssp-text-2)}
+.ssp-pos-head{font-size:11px;color:var(--ssp-text-3);border-bottom:.5px solid var(--ssp-border)}
+.ssp-pos-code{color:var(--ssp-text-3);font-size:11px}
+.ssp-pos-name{display:flex;align-items:center;gap:6px;min-width:0}
+.ssp-pos-name .ssp-mini-k{width:64px;margin-left:auto}
+.ssp-pos-dot{width:8px;height:8px;border-radius:2px;flex:none}
+.ssp-pos-price,.ssp-pos-tokens{text-align:right;font-variant-numeric:tabular-nums}
+.ssp-pos-chg{text-align:right}
+.ssp-pos-bar{display:block;height:6px;border-radius:3px;background:var(--ssp-hover);overflow:hidden}
+.ssp-pos-bar-fill{display:block;height:100%}
+.ssp-pos-cost{text-align:right;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
+.ssp-term-status{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--ssp-text-3);border-top:1px solid var(--ssp-border);padding-top:8px;flex-wrap:wrap}
+/* --- market tension: motion + structure (no extra copy) --- */
+@keyframes ssp-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
+@keyframes ssp-flash-up{0%{background:color-mix(in srgb,var(--up) 22%,transparent)}100%{background:transparent}}
+@keyframes ssp-flash-down{0%{background:color-mix(in srgb,var(--down) 22%,transparent)}100%{background:transparent}}
+@keyframes ssp-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes ssp-sweep{0%{transform:translateY(-100%);opacity:0}35%{opacity:.9}100%{transform:translateY(100%);opacity:0}}
+@keyframes ssp-mode-in{0%{opacity:0;transform:translateY(6px) scale(.995)}100%{opacity:1;transform:none}}
+.ssp-root{animation:ssp-mode-in .26s cubic-bezier(.22,.61,.36,1)}
+.ssp-live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--up);margin-right:5px;animation:ssp-pulse 1.4s ease-in-out infinite;vertical-align:1px}
+.ssp-term-ticker{position:relative;overflow:hidden;border:1px solid var(--ssp-border);border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--up) 6%,transparent),transparent 30%,transparent 70%,color-mix(in srgb,var(--down) 6%,transparent));height:24px;display:flex;align-items:center}
+.ssp-term-ticker::before,.ssp-term-ticker::after{content:"";position:absolute;top:0;bottom:0;width:24px;z-index:2;pointer-events:none}
+.ssp-term-ticker::before{left:0;background:linear-gradient(90deg,var(--ssp-bg),transparent)}
+.ssp-term-ticker::after{right:0;background:linear-gradient(270deg,var(--ssp-bg),transparent)}
+.ssp-ticker-track{display:inline-flex;gap:22px;white-space:nowrap;padding-left:12px;animation:ssp-marquee 42s linear infinite;font-size:11px;font-variant-numeric:tabular-nums;color:var(--ssp-text-2)}
+.ssp-ticker-item{display:inline-flex;align-items:baseline;gap:5px}
+.ssp-ticker-code{color:var(--ssp-text-3);font-size:10px}
+.ssp-ticker-up{color:var(--up)}
+.ssp-ticker-down{color:var(--down)}
+.ssp-index{position:relative;overflow:hidden;transition:border-color .16s,box-shadow .16s,transform .16s}
+.ssp-index:hover{transform:translateY(-1px)}
+.ssp-index-active::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 12%,transparent),transparent 60%);pointer-events:none}
+.ssp-index-icon{width:12px;height:12px;flex:none;opacity:.75}
+.ssp-index-label{display:flex;align-items:center;gap:4px}
+.ssp-instrument-price-flash-up{animation:ssp-flash-up 1.1s ease-out}
+.ssp-instrument-price-flash-down{animation:ssp-flash-down 1.1s ease-out}
+.ssp-term-last-tag{fill:var(--ssp-bg)}
+.ssp-term-last-tag-text{font-size:10px;font-variant-numeric:tabular-nums;font-weight:600}
+.ssp-term-chart-card{position:relative;overflow:hidden}
+.ssp-term-chart-card::before{content:"";position:absolute;left:0;right:0;top:0;height:36%;background:linear-gradient(180deg,color-mix(in srgb,var(--ssp-text-1) 3%,transparent),transparent);pointer-events:none;animation:ssp-sweep 6.5s ease-in-out infinite}
+.ssp-term-grid-line{stroke-dasharray:2 4;opacity:.9}
+.ssp-tape-row{transition:background-color .18s}
+.ssp-tape-row:hover{background:var(--ssp-hover)}
+.ssp-watch-row{transition:background-color .16s,color .16s}
+.ssp-pos-row{transition:background-color .16s}
+.ssp-pos-row:hover{background:var(--ssp-hover)}
+@media (prefers-reduced-motion:reduce){.ssp-root,.ssp-ticker-track,.ssp-live-dot,.ssp-term-chart-card::before{animation:none}.ssp-index:hover{transform:none}}
+.ssp-term-chart-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 0;color:var(--ssp-text-3)}
+.ssp-term-chart-empty-ring{width:64px;height:64px;border-radius:50%;border:6px solid var(--ssp-border)}
+.ssp-term-empty{padding:18px;color:var(--ssp-text-3);font-size:12px}
+.ssp-term-error{margin:8px 0;padding:10px 12px;border:1px solid var(--ssp-border);border-radius:10px;background:var(--ssp-hover);font-size:12px;display:flex;gap:12px;align-items:center}
+@media (max-width:1100px){.ssp-index-strip{grid-template-columns:repeat(3,minmax(0,1fr))}.ssp-term-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:720px){.ssp-index-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.ssp-pos-row{grid-template-columns:52px minmax(0,1fr) 70px 56px 70px}.ssp-pos-share,.ssp-pos-cost{display:none}.ssp-watch-row{grid-template-columns:48px minmax(0,1fr) 60px 60px 56px}.ssp-watch-cost{display:none}}
+
 `;
 		if (
 			typeof document !== "undefined" &&
@@ -190,8 +331,12 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 		//#endregion
 
 		//#region locale
+		// Locale namespace for this plugin's own dictionary.
 		const NS = "session-stats";
-		const PANEL_ID = "session-stats";
+		// Slot key/id handed to the host. Must not collide with an official or
+		// third-party panel id, so it mirrors the loader id instead of the
+		// shorter HTTP namespace above.
+		const PANEL_ID = "session-stats-panel";
 		const WINDOW_KEYS = ["24h", "7d", "14d", "30d"];
 		const zh = {
 			"panel": "会话统计",
@@ -201,8 +346,8 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"window.14d": "近 14 天",
 			"window.30d": "近 30 天",
 			"currency.aria": "显示币种",
-			"currency.cny": "人民币",
-			"currency.usd": "美元",
+			"currency.cny": "CNY",
+			"currency.usd": "USD",
 			"cards.aria": "核心指标",
 			"card.tokens": "总 Token 消耗",
 			"card.tokens.sub": "输入 {input} · 输出 {output}",
@@ -253,7 +398,8 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"unit.ms": "ms",
 			"live.title": "DSH 运行状态",
 			"live.badge": "实时 · 5 秒采样",
-			"live.meta": "{cores} 核 负载 {load}",
+			"live.meta": "{cores} 核",
+			"live.meta.hint": "宿主进程的可用逻辑核数",
 			"live.cpu": "CPU（进程）",
 			"live.cpu.sub": "整机 {machine}% · {cores} 核",
 			"live.mem": "内存（RSS）",
@@ -267,8 +413,67 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"daily.title": "每日消耗",
 			"daily.sub": "按 token 堆叠 · {range}",
 			"donut.title": "Token 构成",
+			"costDonut.title": "成本构成",
+			"costDonut.sub": "按模型 · 含官方搜索",
 			"donut.sub": "按模型",
 			"chart.other": "其他",
+			"terminal.sub": "SESSION TERMINAL",
+			"chart.bars": "堆叠柱",
+			"chart.candles": "蜡烛",
+			"chart.title": "行情走势",
+			"chart.aria": "行情图",
+			"chart.volume": "成交量（调用次数）",
+			"chart.stacked": "按模型堆叠",
+			"view.aria": "图表形态",
+			"mode.aria": "视图模式",
+			"mode.stats": "统计",
+			"mode.terminal": "K线",
+			"priceMode.aria": "价格口径",
+			"priceMode.tokens": "tokens/分",
+			"priceMode.cost": "¥/分",
+			"unit.tokenRate": "tokens/分",
+			"unit.costRate": "¥/分",
+			"index.aria": "指数",
+			"index.tokens": "总消耗",
+			"index.cost": "预估成本",
+			"index.sessions": "会话数",
+			"index.cacheHit": "缓存命中率",
+			"index.search": "官方搜索",
+			"stats.open": "今开",
+			"stats.high": "最高",
+			"stats.low": "最低",
+			"stats.avg": "均价",
+			"stats.amplitude": "振幅",
+			"term.open": "开",
+			"term.high": "高",
+			"term.low": "低",
+			"term.close": "收",
+			"term.chg": "涨跌",
+			"term.total": "总量",
+			"term.cost": "花费",
+			"term.calls": "调用",
+			"term.sessions": "会话",
+			"term.hit": "命中",
+			"term.priceTable": "官方价目",
+			"watch.title": "自选行情",
+			"watch.sub": "按模型 · 点击切换主图",
+			"watch.all": "全部模型",
+			"watch.allPrice": "综合",
+			"tape.title": "成交流水",
+			"tape.sub": "最近 20 条",
+			"tape.empty": "暂无成交",
+			"positions.title": "持仓明细",
+			"positions.sub": "按 tokens 降序",
+			"positions.colCode": "代码",
+			"positions.colName": "名称",
+			"positions.colPrice": "现价",
+			"positions.colChg": "涨跌",
+			"positions.colShare": "占比",
+			"positions.colCost": "成本",
+			"status.data": "行情数据",
+			"status.sessions": "个会话",
+			"status.sampled": "采样",
+			"state.receiving": "正在接收行情数据…",
 			"models.title": "分模型明细",
 			"models.sub": "按 token 降序",
 			"models.colModel": "模型",
@@ -344,7 +549,8 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"unit.ms": "ms",
 			"live.title": "DSH runtime",
 			"live.badge": "Live · 5s sampling",
-			"live.meta": "{cores} cores, load {load}",
+			"live.meta": "{cores} cores",
+			"live.meta.hint": "Logical cores available to the host process",
 			"live.cpu": "CPU (process)",
 			"live.cpu.sub": "Machine {machine}% · {cores} cores",
 			"live.mem": "Memory (RSS)",
@@ -358,8 +564,67 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			"daily.title": "Daily consumption",
 			"daily.sub": "Stacked by token kind · {range}",
 			"donut.title": "Token composition",
+			"costDonut.title": "Cost breakdown",
+			"costDonut.sub": "By model · incl. official search",
 			"donut.sub": "By model",
 			"chart.other": "Other",
+			"terminal.sub": "SESSION TERMINAL",
+			"chart.bars": "Bars",
+			"chart.candles": "Candles",
+			"chart.title": "Price action",
+			"chart.aria": "Market chart",
+			"chart.volume": "Volume (calls)",
+			"chart.stacked": "Stacked by model",
+			"view.aria": "Chart form",
+			"mode.aria": "View mode",
+			"mode.stats": "Stats",
+			"mode.terminal": "K-line",
+			"priceMode.aria": "Price basis",
+			"priceMode.tokens": "tokens/min",
+			"priceMode.cost": "¥/min",
+			"unit.tokenRate": "tokens/min",
+			"unit.costRate": "¥/min",
+			"index.aria": "Indices",
+			"index.tokens": "Total tokens",
+			"index.cost": "Est. cost",
+			"index.sessions": "Sessions",
+			"index.cacheHit": "Cache hit",
+			"index.search": "Official search",
+			"stats.open": "Open",
+			"stats.high": "High",
+			"stats.low": "Low",
+			"stats.avg": "Avg",
+			"stats.amplitude": "Range",
+			"term.open": "O",
+			"term.high": "H",
+			"term.low": "L",
+			"term.close": "C",
+			"term.chg": "Chg",
+			"term.total": "Total",
+			"term.cost": "Cost",
+			"term.calls": "Calls",
+			"term.sessions": "Sessions",
+			"term.hit": "Hit",
+			"term.priceTable": "Price list",
+			"watch.title": "Watchlist",
+			"watch.sub": "By model · click to focus",
+			"watch.all": "All models",
+			"watch.allPrice": "Combined",
+			"tape.title": "Time & sales",
+			"tape.sub": "Latest 20",
+			"tape.empty": "No activity yet",
+			"positions.title": "Positions",
+			"positions.sub": "Sorted by tokens",
+			"positions.colCode": "Code",
+			"positions.colName": "Name",
+			"positions.colPrice": "Last",
+			"positions.colChg": "Chg",
+			"positions.colShare": "Share",
+			"positions.colCost": "Cost",
+			"status.data": "Market data",
+			"status.sessions": "sessions",
+			"status.sampled": "sampled",
+			"state.receiving": "Receiving market data…",
 			"models.title": "Models",
 			"models.sub": "Sorted by tokens",
 			"models.colModel": "Model",
@@ -659,8 +924,8 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 					),
 					h(
 						"span",
-						{ className: "ssp-live-meta" },
-						hasLive ? t("live.meta", { cores: cpu.cores, load: formatTwoDecimals(cpu.loadavg) }) : placeholder,
+						{ className: "ssp-live-meta", title: hasLive ? t("live.meta.hint") : undefined },
+						hasLive ? t("live.meta", { cores: cpu.cores }) : placeholder,
 					),
 				),
 				h(
@@ -1125,6 +1390,113 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			);
 		}
 
+		function CostDonutCard({ t, data, currency, symbol, placeholder }) {
+			const totals = data !== null && data.totals ? data.totals : null;
+			const slices = data !== null && Array.isArray(data.costComposition) ? data.costComposition : [];
+			const totalCost = totals === null ? 0 : Number(totals.costCNYTotal ?? totals.costCNY) || 0;
+			const tokens = totals === null ? 0 : Number(totals.tokens) || 0;
+			const rate = data !== null && Number(data.currency?.usdRate) > 0 ? Number(data.currency.usdRate) : 7.1;
+			const toDisplay = (cny) => (currency === "CNY" ? cny : cny / rate);
+			const size = 168;
+			const stroke = 18;
+			const radius = (size - stroke) / 2;
+			const circumference = 2 * Math.PI * radius;
+			const active = totalCost > 0 ? slices.filter((slice) => (Number(slice.costCNY) || 0) > 0) : [];
+			let offset = 0;
+			const segments = active.map((slice) => {
+				const share = totalCost > 0 ? (Number(slice.costCNY) || 0) / totalCost : 0;
+				const rawLength = share * circumference;
+				const gap = share > 0.02 ? 2 : 0;
+				const length = Math.max(0, rawLength - gap);
+				const segment = h("circle", {
+					key: slice.key,
+					className: "ssp-donut-seg",
+					"data-series": slice.key,
+					cx: size / 2,
+					cy: size / 2,
+					r: radius,
+					transform: `rotate(-90 ${size / 2} ${size / 2})`,
+					strokeDasharray: `${length.toFixed(2)} ${(circumference - length).toFixed(2)}`,
+					strokeDashoffset: (-offset).toFixed(2),
+					style: { stroke: slice.color },
+				});
+				offset += rawLength;
+				return segment;
+			});
+			const legend = active.map((slice) => {
+				const share = totalCost > 0 ? (Number(slice.costCNY) || 0) / totalCost : 0;
+				return h(
+					"div",
+					{ className: "ssp-model-legend-row ssp-cost-legend-row", key: slice.key },
+					h(ColorChip, { color: slice.color, className: "ssp-legend-dot" }),
+					h(
+						"span",
+						{ className: "ssp-model-legend-name", title: slice.label },
+						slice.label,
+						slice.vendor === null || slice.vendor === undefined
+							? null
+							: h("span", { className: "ssp-cost-legend-vendor" }, " · " + vendorLabelOf(t, slice)),
+					),
+					h(
+						"span",
+						{ className: "ssp-model-legend-share" },
+						share > 0 && share < 0.001 ? "<0.1%" : formatPercent(share),
+					),
+					h("span", { className: "ssp-model-legend-cost" }, `${symbol}${formatMoney(toDisplay(slice.costCNY))}`),
+				);
+			});
+			return h(
+				"section",
+				{ className: "ssp-card ssp-cost-donut", "aria-label": t("costDonut.title") },
+				h(
+					"div",
+					{ className: "ssp-card-head" },
+					h(
+						"div",
+						null,
+						h("div", { className: "ssp-card-title" }, t("costDonut.title")),
+						h("div", { className: "ssp-card-sub" }, t("costDonut.sub")),
+					),
+				),
+				h(
+					"div",
+					{ className: "ssp-donut-wrap" },
+					h(
+						"div",
+						{ className: "ssp-donut" },
+						h(
+							"svg",
+							{ viewBox: `0 0 ${size} ${size}`, role: "img", "aria-hidden": "true" },
+							h("circle", {
+								className: "ssp-donut-track",
+								cx: size / 2,
+								cy: size / 2,
+								r: radius,
+							}),
+							segments,
+						),
+						h(
+							"div",
+							{ className: "ssp-donut-center" },
+							h(
+								"div",
+								{ className: "ssp-donut-value" },
+								active.length === 0
+									? t("state.placeholder")
+									: `${symbol}${formatMoney(toDisplay(totalCost))}`,
+							),
+							h(
+								"div",
+								{ className: "ssp-donut-unit" },
+								active.length === 0 ? placeholder : `${formatTokens(tokens)} tokens`,
+							),
+						),
+					),
+					legend.length > 0 ? h("div", { className: "ssp-model-legend" }, legend) : null,
+				),
+			);
+		}
+
 		function ModelDetailCard({ t, models, currency, symbol, placeholder, otherLabel, otherColor, limit, unpricedCount, unpricedTokenTotal }) {
 			const total = (Array.isArray(models) ? models : []).reduce(
 				(sum, model) => sum + (Number(model.tokens) || 0),
@@ -1253,8 +1625,685 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 
 		//#endregion
 
+		//#region terminal
+		/** Beijing wall-clock HH:mm:ss for tape / status rows. */
+		/** Wall-clock HH:mm:ss; offsetMs comes from the host so non-CN viewers see their own day boundaries. */
+		function formatClock(timeMs, offsetMs = 8 * 3_600_000) {
+			const date = new Date(Number(timeMs) + Number(offsetMs));
+			const hh = String(date.getUTCHours()).padStart(2, "0");
+			const mm = String(date.getUTCMinutes()).padStart(2, "0");
+			const ss = String(date.getUTCSeconds()).padStart(2, "0");
+			return `${hh}:${mm}:${ss}`;
+		}
+
+		/** Beijing wall-clock MM/DD HH:mm for candle ranges. */
+		function formatRange(startMs, periodMs, offsetMs = 8 * 3_600_000) {
+			const start = new Date(Number(startMs) + Number(offsetMs));
+			const end = new Date(Number(startMs) + Number(periodMs) + Number(offsetMs));
+			const pad = (value) => String(value).padStart(2, "0");
+			return `${pad(start.getUTCMonth() + 1)}/${pad(start.getUTCDate())} ${pad(start.getUTCHours())}:${pad(start.getUTCMinutes())}–${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
+		}
+
+		/** Signed percentage badge (red up / green down), or -- when unknown. */
+		function ChangeBadge({ t, value, className }) {
+			if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+				return h("span", { className: "ssp-term-chg ssp-term-chg-flat" }, "--");
+			}
+			const number = Number(value);
+			const flat = Math.abs(number) < 0.0005;
+			const up = number > 0;
+			const arrow = flat ? "" : up ? "▲ " : "▼ ";
+			return h(
+				"span",
+				{ className: `ssp-term-chg ${flat ? "ssp-term-chg-flat" : up ? "ssp-term-chg-up" : "ssp-term-chg-down"}${className ? " " + className : ""}` },
+				`${arrow}${formatPercent(Math.abs(number))}`,
+			);
+		}
+
+		/** 12-point mini candlestick strip (pure SVG, no axes). */
+		function MiniK({ values, className }) {
+			const list = Array.isArray(values) && values.length > 0 ? values : [0, 0];
+			const width = 72;
+			const height = 22;
+			const max = Math.max(...list.map((value) => Number(value) || 0), 1);
+			const step = width / list.length;
+			const nodes = [];
+			for (let index = 0; index < list.length; index += 1) {
+				const value = Number(list[index]) || 0;
+				const previous = index === 0 ? value : Number(list[index - 1]) || 0;
+				const up = value >= previous;
+				const x = index * step + step / 2;
+				const bodyTop = height - (Math.max(value, previous) / max) * (height - 4) - 2;
+				const bodyBottom = height - (Math.min(value, previous) / max) * (height - 4) - 2;
+				const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+				nodes.push(h("line", { key: `w${index}`, x1: x, x2: x, y1: 2, y2: height - 1, className: up ? "ssp-mini-wick-up" : "ssp-mini-wick-down" }));
+				nodes.push(h("rect", { key: `b${index}`, x: x - Math.max(1, step * 0.3), y: bodyTop, width: Math.max(1.5, step * 0.6), height: bodyHeight, className: up ? "ssp-mini-body-up" : "ssp-mini-body-down", rx: 0.5 }));
+			}
+			return h("svg", { className: `ssp-mini-k${className ? " " + className : ""}`, viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" }, nodes);
+		}
+
+		/** One index strip cell: label, value, change badge, mini K. */
+		/** Scrolling quote tape: the "market is alive" cue, built from data rather than copy. */
+		function Ticker({ t, indices, symbols, totalTokens }) {
+			const items = [];
+			for (const item of indices) {
+				const value = item.key === "cacheHit" ? formatPercent(item.value) : item.key === "cost" ? `¥${formatMoney(item.value)}` : formatTokens(item.value);
+				items.push({ code: t(`index.${item.key}`, { defaultValue: item.label }), value, chg: item.chgPct, up: (Number(item.chgPct) || 0) >= 0 });
+			}
+			for (const symbol of symbols.slice(0, 8)) {
+				items.push({ code: symbol.code, value: formatTokens(symbol.rate), chg: symbol.chgPct, up: (Number(symbol.chgPct) || 0) >= 0 });
+			}
+			items.push({ code: "VOL", value: formatTokens(totalTokens), chg: null, up: true });
+			if (items.length === 0) return null;
+			const row = (item, key) =>
+				h(
+					"span",
+					{ className: "ssp-ticker-item", key },
+					h("span", { className: "ssp-ticker-code" }, item.code),
+					h("span", null, item.value),
+					item.chg === null || item.chg === undefined ? null : h("span", { className: item.up ? "ssp-ticker-up" : "ssp-ticker-down" }, `${item.up ? "▲" : "▼"}${Math.abs(Number(item.chg) * 100).toFixed(1)}%`),
+				);
+			return h(
+				"div",
+				{ className: "ssp-term-ticker", "aria-hidden": "true" },
+				h("div", { className: "ssp-ticker-track" }, [...items.map((item, index) => row(item, "a" + index)), ...items.map((item, index) => row(item, "b" + index))]),
+			);
+		}
+
+		/** Tiny market glyphs: bars for volume, curve for price, dots for sessions, ring for cache, magnifier for search. */
+		function IndexIcon({ kind }) {
+			const stroke = { stroke: "currentColor", strokeWidth: 1.2, fill: "none", strokeLinejoin: "round", strokeLinecap: "round" };
+			const glyphs = {
+				tokens: h("g", null, h("path", { d: "M1 6h2v3H1zM4.5 3h2v6h-2zM8 5h2v4H8zM11.5 1.5h2v7.5h-2z", fill: "currentColor", stroke: "none" })),
+				cost: h("g", null, h("path", { d: "M2 4.5 8 1.5l6 3-6 3-6-3Z", ...stroke }), h("path", { d: "M2 8l6 3 6-3M2 11l6 3 6-3", ...stroke })),
+				sessions: h("g", null, h("circle", { cx: 5, cy: 5, r: 2.2, ...stroke }), h("path", { d: "M1.5 13c0-2 1.6-3.2 3.5-3.2S8.5 11 8.5 13", ...stroke }), h("path", { d: "M10 4.2a2 2 0 0 1 0 3.6M11.6 10.4c1.2.3 2 1.3 2 2.6", ...stroke })),
+				cacheHit: h("g", null, h("circle", { cx: 8, cy: 8, r: 5.4, ...stroke }), h("path", { d: "M8 4.6V8l2.4 1.6", ...stroke })),
+				search: h("g", null, h("circle", { cx: 7, cy: 7, r: 3.6, ...stroke }), h("path", { d: "M9.6 9.6 13.2 13.2", ...stroke })),
+			};
+			return h("svg", { className: "ssp-index-icon", viewBox: "0 0 16 16", "aria-hidden": "true", focusable: "false" }, glyphs[kind] ?? glyphs.tokens);
+		}
+
+		function IndexCell({ t, item, selected, onSelect }) {
+			const value = item.key === "cacheHit" ? formatPercent(item.value) : item.key === "cost" ? `¥${formatMoney(item.value)}` : formatTokens(item.value);
+			const unit = item.key === "cacheHit" ? "" : item.unit === "tokens" ? "tokens" : item.unit === "¥" ? "" : item.unit;
+			return h(
+				"button",
+				{
+					type: "button",
+					className: `ssp-index${selected ? " ssp-index-active" : ""}`,
+					onClick: () => onSelect(item.key),
+					"aria-pressed": selected ? "true" : "false",
+				},
+				h("span", { className: "ssp-index-label" }, h(IndexIcon, { kind: item.key }), t(`index.${item.key}`, { defaultValue: item.label })),
+				h(
+					"span",
+					{ className: "ssp-index-row" },
+					h("span", { className: "ssp-index-value" }, value),
+					unit === "" ? null : h("span", { className: "ssp-index-unit" }, unit),
+				),
+				h(ChangeBadge, { t, value: item.chgPct }),
+				h(MiniK, { values: item.spark }),
+			);
+		}
+
+		/** Instrument header: current rate, change, and the five summary stats. */
+		function InstrumentHeader({ t, title, unit, price, chgPct, stats }) {
+			return h(
+				"section",
+				{ className: "ssp-instrument" },
+				h(
+					"div",
+					{ className: "ssp-instrument-main" },
+					h("div", { className: "ssp-instrument-name" }, title),
+					h(
+						"div",
+						{ className: "ssp-instrument-price-row" },
+						h("span", { className: "ssp-instrument-price" }, price),
+						h("span", { className: "ssp-instrument-unit" }, unit),
+						h(ChangeBadge, { t, value: chgPct, className: "ssp-instrument-chg" }),
+					),
+				),
+				h(
+					"div",
+					{ className: "ssp-instrument-stats" },
+					stats.map((stat) =>
+						h(
+							"div",
+							{ className: "ssp-instrument-stat", key: stat.key },
+							h("span", { className: "ssp-instrument-stat-label" }, t(`stats.${stat.key}`)),
+							h("span", { className: "ssp-instrument-stat-value" }, stat.value),
+						),
+					),
+				),
+			);
+		}
+
+		/** Main chart: candlesticks or stacked bars + MA lines + volume + crosshair. */
+		function TerminalChart({ t, bars, view, priceMode, period, periodMs, models, hover, onHover, placeholder, offsetMs = 8 * 3_600_000 }) {
+			const list = Array.isArray(bars) ? bars : [];
+			const width = 1000;
+			const height = 420;
+			const left = 8;
+			const right = 72;
+			const priceTop = 10;
+			const priceBottom = 300;
+			const volumeTop = 322;
+			const volumeBottom = 404;
+			const plotWidth = width - left - right;
+			if (list.length === 0) {
+				return h(
+					"div",
+					{ className: "ssp-term-chart-empty" },
+					h("div", { className: "ssp-term-chart-empty-ring" }),
+					h("div", { className: "ssp-card-sub" }, placeholder),
+				);
+			}
+			const colorByRoute = new Map((Array.isArray(models) ? models : []).map((model) => [model.route, model.color]));
+			const isBars = view === "bars";
+			const priced = list.map((bar) => {
+				const factor = priceMode === "cost" && bar.tokens > 0 ? bar.costCNY / bar.tokens : 1;
+				return { ...bar, o: bar.o * factor, h: bar.h * factor, l: bar.l * factor, c: bar.c * factor };
+			});
+			const lows = priced.map((bar) => bar.l).filter((value) => Number.isFinite(value));
+			const highs = priced.map((bar) => bar.h).filter((value) => Number.isFinite(value));
+			const rawMin = lows.length > 0 ? Math.min(...lows) : 0;
+			const rawMax = highs.length > 0 ? Math.max(...highs) : 1;
+			const pad = Math.max((rawMax - rawMin) * 0.08, rawMax === 0 ? 1 : rawMax * 0.02);
+			const min = rawMin - pad;
+			const max = rawMax + pad;
+			const scaleY = (value) => priceBottom - ((value - min) / (max - min || 1)) * (priceBottom - priceTop);
+			const barWidth = plotWidth / list.length;
+			const bodyWidth = Math.max(1, barWidth * 0.62);
+			const wickUp = [];
+			const wickDown = [];
+			const bodies = [];
+			const volume = [];
+			const maxVolume = Math.max(1, ...list.map((bar) => bar.vol || 0));
+			const volumeScale = (value) => volumeBottom - (value / maxVolume) * (volumeBottom - volumeTop);
+			const colors = [];
+			for (let index = 0; index < list.length; index += 1) {
+				const bar = priced[index];
+				const raw = list[index];
+				const x = left + index * barWidth + barWidth / 2;
+				if (isBars) {
+					if (raw.empty) {
+						bodies.push(h("rect", { key: `b${index}-empty`, x: (x - bodyWidth / 2).toFixed(2), y: priceTop, width: bodyWidth.toFixed(2), height: priceBottom - priceTop, fill: "url(#ssp-hatch)" }));
+						continue;
+					}
+					const segments = Array.isArray(raw.byModel) && raw.byModel.length > 0 ? raw.byModel : raw.tokens > 0 ? [{ route: "__all", tokens: raw.tokens }] : [];
+					const totalTokens = segments.reduce((sum, segment) => sum + (Number(segment.tokens) || 0), 0) || 1;
+					let cursor = priceBottom;
+					for (const segment of segments) {
+						const value = (Number(segment.tokens) || 0) / totalTokens;
+						const height = value * (priceBottom - priceTop);
+						if (height <= 0) continue;
+						cursor -= height;
+						const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
+						bodies.push(h("rect", { key: `b${index}-${segment.route}`, className: "ssp-term-bar", x: (x - bodyWidth / 2).toFixed(2), y: cursor.toFixed(2), width: bodyWidth.toFixed(2), height: Math.max(0.5, height).toFixed(2), fill: color, opacity: 0.85, shapeRendering: "crispEdges" }));
+					}
+					// Volume subchart is shared by both forms (calls per period).
+					let volumeCursor = volumeBottom;
+					for (const segment of segments) {
+						const value = (Number(segment.tokens) || 0) / totalTokens;
+						const segmentHeight = value * (volumeBottom - volumeTop) * (raw.vol > 0 ? 1 : 0);
+						if (segmentHeight <= 0) continue;
+						volumeCursor -= segmentHeight;
+						const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
+						volume.push(h("rect", { key: `v${index}-${segment.route}`, x: (x - bodyWidth / 2).toFixed(2), y: volumeCursor.toFixed(2), width: bodyWidth.toFixed(2), height: Math.max(0.5, segmentHeight).toFixed(2), fill: color, opacity: 0.55 }));
+					}
+					continue;
+				}
+				const up = bar.c >= bar.o;
+				const flat = !raw.empty && Math.abs(bar.c - bar.o) < 1e-9;
+				const top = scaleY(Math.max(bar.o, bar.c));
+				const bottom = scaleY(Math.min(bar.o, bar.c));
+				const bodyHeight = Math.max(1, bottom - top);
+				const className = raw.empty ? "ssp-candle-body ssp-candle-empty" : flat ? "ssp-candle-body ssp-candle-flat" : up ? "ssp-candle-body ssp-candle-up" : "ssp-candle-body ssp-candle-down";
+				const wickClass = flat ? "ssp-candle-wick-flat" : up ? "ssp-candle-wick-up" : "ssp-candle-wick-down";
+				if (!raw.empty) {
+					const path = `M${x.toFixed(2)} ${scaleY(bar.h).toFixed(2)}L${x.toFixed(2)} ${scaleY(bar.l).toFixed(2)}`;
+					(up ? wickUp : wickDown).push(path);
+				}
+				bodies.push(
+					h("rect", {
+						key: `b${index}`,
+						x: (x - bodyWidth / 2).toFixed(2),
+						y: top.toFixed(2),
+						width: bodyWidth.toFixed(2),
+						height: bodyHeight.toFixed(2),
+						className,
+						shapeRendering: "crispEdges",
+					}),
+				);
+				// Volume: stacked by model when available, otherwise a single grey bar.
+				let cursor = volumeBottom;
+				const segments = Array.isArray(raw.byModel) && raw.byModel.length > 0 ? raw.byModel : raw.tokens > 0 ? [{ route: "__all", tokens: raw.tokens }] : [];
+				const totalTokens = segments.reduce((sum, segment) => sum + (Number(segment.tokens) || 0), 0) || 1;
+				for (const segment of segments) {
+					const value = (Number(segment.tokens) || 0) / totalTokens;
+					const segmentHeight = value * (volumeBottom - volumeTop) * (raw.vol > 0 ? 1 : 0);
+					if (segmentHeight <= 0) continue;
+					cursor -= segmentHeight;
+					const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
+					volume.push(h("rect", { key: `v${index}-${segment.route}`, x: (x - bodyWidth / 2).toFixed(2), y: cursor.toFixed(2), width: bodyWidth.toFixed(2), height: Math.max(0.5, segmentHeight).toFixed(2), fill: color, opacity: 0.55 }));
+				}
+				colors.push(raw.empty);
+			}
+			// Moving averages over closes.
+			const ma = (window) => {
+				const points = [];
+				for (let index = 0; index < priced.length; index += 1) {
+					if (index < window - 1) continue;
+					let sum = 0;
+					for (let cursor = index - window + 1; cursor <= index; cursor += 1) sum += priced[cursor].c;
+					points.push(`${(left + index * barWidth + barWidth / 2).toFixed(2)},${scaleY(sum / window).toFixed(2)}`);
+				}
+				return points.length > 1 ? `M${points.join("L")}` : "";
+			};
+			const ma5 = isBars ? "" : ma(5);
+			const ma10 = isBars ? "" : ma(10);
+			const ma20 = isBars ? "" : ma(20);
+			const last = priced[priced.length - 1];
+			const maValue = (window) => {
+				if (priced.length < window) return null;
+				let sum = 0;
+				for (let index = priced.length - window; index < priced.length; index += 1) sum += priced[index].c;
+				return sum / window;
+			};
+			const hoverBar = hover >= 0 && hover < list.length ? list[hover] : null;
+			const hoverPriced = hover >= 0 && hover < priced.length ? priced[hover] : null;
+			const priceTicks = [0, 0.5, 1].map((fraction) => {
+				const value = min + (max - min) * fraction;
+				return { value, y: scaleY(value) };
+			});
+			const timeTicks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+				const index = Math.min(list.length - 1, Math.round(fraction * (list.length - 1)));
+				return { index, label: formatClock(list[index].t, offsetMs).slice(0, 5) };
+			});
+			const priceFormat = (value) => (priceMode === "cost" ? `¥${formatMoney(value)}` : formatTokens(value));
+			const changeOf = (index) => {
+				if (index <= 0) return null;
+				const previous = priced[index - 1].c;
+				return previous > 0 ? (priced[index].c - previous) / previous : null;
+			};
+			const onMove = (event) => {
+				const rect = event.currentTarget.getBoundingClientRect();
+				const x = event.clientX - rect.left;
+				const index = Math.round(((x / rect.width) * width - left) / barWidth - 0.5);
+				onHover(index >= 0 && index < list.length ? index : -1);
+			};
+			const tooltip = hoverBar === null ? null : h(
+				"div",
+				{ className: `ssp-term-tip${hover > list.length * 0.62 ? " ssp-term-tip-left" : ""}` },
+				h("div", { className: "ssp-term-tip-head" }, `${formatRange(hoverBar.t, periodMs, offsetMs)} · ${period}`),
+				h("div", { className: "ssp-term-tip-grid" },
+					h("span", null, `${t("term.open")} ${priceFormat(hoverPriced.o)}`),
+					h("span", null, `${t("term.high")} ${priceFormat(hoverPriced.h)}`),
+					h("span", null, `${t("term.low")} ${priceFormat(hoverPriced.l)}`),
+					h("span", null, `${t("term.close")} ${priceFormat(hoverPriced.c)}`),
+				),
+				h("div", { className: "ssp-term-tip-grid" },
+					h("span", null, `${t("term.chg")} `, h(ChangeBadge, { t, value: changeOf(hover) })),
+					h("span", null, `${t("term.total")} ${formatTokens(hoverBar.tokens)}`),
+					h("span", null, `${t("term.cost")} ¥${formatMoney(hoverBar.costCNY)}`),
+					h("span", null, `${t("term.calls")} ${hoverBar.calls}`),
+				),
+				h("div", { className: "ssp-term-tip-grid" },
+					h("span", null, `${t("term.sessions")} ${hoverBar.sessions}`),
+					h("span", null, `${t("term.hit")} ${formatPercent(hoverBar.cacheHit)}`),
+					h("span", { className: "ssp-term-tip-model" }, `Top ${hoverBar.byModel[0] ? (models.find((model) => model.route === hoverBar.byModel[0].route)?.label ?? hoverBar.byModel[0].route) : "--"}`),
+				),
+			);
+			return h(
+				"div",
+				{ className: "ssp-term-chart", onMouseMove: onMove, onMouseLeave: () => onHover(-1) },
+				h(
+					"svg",
+					{ viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": t("chart.aria") },
+					h("defs", null, h("pattern", { id: "ssp-hatch", width: 4, height: 4, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, h("rect", { width: 1, height: 4, fill: "var(--ssp-text-3)", opacity: 0.18 }))),
+					priceTicks.map((tick, index) => h("line", { key: `g${index}`, x1: left, x2: width - right, y1: tick.y, y2: tick.y, className: "ssp-term-grid-line" })),
+					priceTicks.map((tick, index) => h("text", { key: `p${index}`, x: width - right + 8, y: tick.y + 4, className: "ssp-term-axis" }, priceFormat(tick.value))),
+					h("path", { d: wickUp.join(""), className: "ssp-candle-wick-up", fill: "none" }),
+					h("path", { d: wickDown.join(""), className: "ssp-candle-wick-down", fill: "none" }),
+					bodies,
+					ma5 === "" ? null : h("path", { d: ma5, className: "ssp-ma ssp-ma5", fill: "none" }),
+					ma10 === "" ? null : h("path", { d: ma10, className: "ssp-ma ssp-ma10", fill: "none" }),
+					ma20 === "" ? null : h("path", { d: ma20, className: "ssp-ma ssp-ma20", fill: "none" }),
+					h("line", { x1: left, x2: width - right, y1: volumeTop, y2: volumeTop, className: "ssp-term-axis-line" }),
+					volume,
+					h("line", { x1: left, x2: width - right, y1: volumeBottom, y2: volumeBottom, className: "ssp-term-axis-line" }),
+					timeTicks.map((tick) => h("text", { key: `t${tick.index}`, x: left + tick.index * barWidth + barWidth / 2, y: height - 6, className: "ssp-term-axis ssp-term-axis-time", textAnchor: "middle" }, tick.label)),
+					hoverPriced === null ? null : h("line", { x1: left + hover * barWidth + barWidth / 2, x2: left + hover * barWidth + barWidth / 2, y1: priceTop, y2: volumeBottom, className: "ssp-term-cross" }),
+					hoverPriced === null ? null : h("line", { x1: left, x2: width - right, y1: scaleY(hoverPriced.c), y2: scaleY(hoverPriced.c), className: "ssp-term-cross" }),
+					hoverPriced === null
+						? h("g", null,
+							h("rect", { x: width - right + 4, y: scaleY(last.c) - 8, width: right - 8, height: 16, rx: 3, className: "ssp-term-last-tag" }),
+							h("text", { x: width - right + 8, y: scaleY(last.c) + 4, className: "ssp-term-axis ssp-term-last-tag-text", fill: last.c >= last.o ? "var(--up)" : "var(--down)" }, priceFormat(last.c)),
+						)
+						: h("text", { x: width - right + 8, y: scaleY(hoverPriced.c) + 4, className: "ssp-term-axis ssp-term-axis-hot" }, priceFormat(hoverPriced.c)),
+					hoverBar === null ? null : h("text", { x: left + hover * barWidth + barWidth / 2, y: height - 6, className: "ssp-term-axis ssp-term-axis-hot", textAnchor: "middle" }, formatClock(hoverBar.t).slice(0, 5)),
+					list.map((bar, index) =>
+						h("rect", { key: `hit${index}`, x: left + index * barWidth, y: priceTop, width: barWidth, height: volumeBottom - priceTop, fill: "transparent" },
+							h("title", null, `${formatRange(bar.t, periodMs, offsetMs)} O${priceFormat(bar.o)} H${priceFormat(bar.h)} L${priceFormat(bar.l)} C${priceFormat(bar.c)} vol ${bar.vol}`),
+						),
+					),
+				),
+				h("div", { className: "ssp-term-legend" },
+					isBars
+						? h("span", { className: "ssp-term-legend-item" }, t("chart.stacked"))
+						: [
+								h("span", { className: "ssp-term-legend-item ssp-ma5", key: "ma5" }, `MA5 ${maValue(5) === null ? "--" : priceFormat(maValue(5))}`),
+								h("span", { className: "ssp-term-legend-item ssp-ma10", key: "ma10" }, `MA10 ${maValue(10) === null ? "--" : priceFormat(maValue(10))}`),
+								h("span", { className: "ssp-term-legend-item ssp-ma20", key: "ma20" }, `MA20 ${maValue(20) === null ? "--" : priceFormat(maValue(20))}`),
+							],
+					h("span", { className: "ssp-term-legend-spacer" }),
+					h("span", { className: "ssp-term-legend-item ssp-term-legend-vol" }, t("chart.volume")),
+				),
+				tooltip,
+			);
+		}
+
+		/** Watchlist (models) with mini K, current rate, change, cost. */
+		function Watchlist({ t, symbols, selected, onSelect, currency, symbolText }) {
+			return h(
+				"section",
+				{ className: "ssp-card ssp-watch" },
+				h("div", { className: "ssp-card-head" }, h("div", null, h("div", { className: "ssp-card-title" }, t("watch.title")), h("div", { className: "ssp-card-sub" }, t("watch.sub")))),
+				h(
+					"div",
+					{ className: "ssp-watch-list" },
+					h(
+						"button",
+						{ type: "button", className: `ssp-watch-row${selected === "ALL" ? " ssp-watch-active" : ""}`, onClick: () => onSelect("ALL") },
+						h("span", { className: "ssp-watch-code" }, "ALL"),
+						h("span", { className: "ssp-watch-name" }, t("watch.all")),
+						h("span", { className: "ssp-watch-spark" }),
+						h("span", { className: "ssp-watch-price" }, t("watch.allPrice")),
+						h("span", { className: "ssp-watch-chg" }, ""),
+						h("span", { className: "ssp-watch-cost" }, ""),
+					),
+					symbols.map((item) =>
+						h(
+							"button",
+							{ type: "button", className: `ssp-watch-row${selected === item.route ? " ssp-watch-active" : ""}`, key: item.route, onClick: () => onSelect(item.route) },
+							h("span", { className: "ssp-watch-code" }, item.code),
+							h("span", { className: "ssp-watch-name", title: item.name }, item.name),
+							h(MiniK, { values: item.spark }),
+							h("span", { className: "ssp-watch-price" }, formatTokens(item.rate)),
+							h(ChangeBadge, { t, value: item.chgPct }),
+							h("span", { className: "ssp-watch-cost" }, item.unpriced ? t("models.unpriced") : `${symbolText}${formatMoney(item.costCNY)}`),
+						),
+					),
+				),
+			);
+		}
+
+		/** Recent activity tape: chat + official search rows. */
+		function Tape({ t, tape, currency, symbolText, rate, offsetMs = 8 * 3_600_000 }) {
+			return h(
+				"section",
+				{ className: "ssp-card ssp-tape" },
+				h("div", { className: "ssp-card-head" }, h("div", null, h("div", { className: "ssp-card-title" }, t("tape.title")), h("div", { className: "ssp-card-sub" }, t("tape.sub")))),
+				h(
+					"div",
+					{ className: "ssp-tape-list" },
+					tape.length === 0
+						? h("div", { className: "ssp-card-sub" }, t("tape.empty"))
+						: tape.map((entry, index) =>
+								h(
+									"div",
+									{ className: "ssp-tape-row", key: `${entry.t}-${index}` },
+									h("span", { className: "ssp-tape-time" }, formatClock(entry.t, offsetMs)),
+									h("span", { className: `ssp-tape-dot ${entry.kind === "search" ? "ssp-tape-dot-search" : entry.costCNY > 0 ? "ssp-tape-dot-up" : "ssp-tape-dot-down"}` }),
+									h("span", { className: "ssp-tape-model" }, entry.kind === "search" ? `SEARCH · ${t("models.search")}` : entry.model),
+									h("span", { className: "ssp-tape-tokens" }, entry.kind === "search" ? "--" : formatTokens(entry.tokens)),
+									h("span", { className: "ssp-tape-cost" }, `${symbolText}${formatMoney(currency === "CNY" ? entry.costCNY : entry.costCNY / (Number(rate) > 0 ? Number(rate) : 7.1))}`),
+								),
+							),
+				),
+			);
+		}
+
+		/** Positions table: code / name + mini K / price / change / share / tokens / cost. */
+		function Positions({ t, symbols, totals, currency, symbolText, models }) {
+			const totalTokens = totals === null ? 0 : Number(totals.tokens) || 0;
+			return h(
+				"section",
+				{ className: "ssp-card ssp-positions" },
+				h("div", { className: "ssp-card-head" }, h("div", null, h("div", { className: "ssp-card-title" }, t("positions.title")), h("div", { className: "ssp-card-sub" }, t("positions.sub")))),
+				h(
+					"div",
+					{ className: "ssp-pos-table" },
+					h(
+						"div",
+						{ className: "ssp-pos-row ssp-pos-head" },
+						h("span", null, t("positions.colCode")),
+						h("span", null, t("positions.colName")),
+						h("span", null, t("positions.colPrice")),
+						h("span", null, t("positions.colChg")),
+						h("span", null, t("positions.colShare")),
+						h("span", null, "tokens"),
+						h("span", null, t("positions.colCost")),
+					),
+					symbols.map((item) => {
+						const share = totalTokens > 0 ? item.tokens / totalTokens : 0;
+						return h(
+							"div",
+							{ className: "ssp-pos-row", key: item.route },
+							h("span", { className: "ssp-pos-code" }, item.code),
+							h(
+								"span",
+								{ className: "ssp-pos-name" },
+								h(ColorChip, { color: item.color, className: "ssp-pos-dot" }),
+								h("span", { title: item.name }, item.name),
+								h(MiniK, { values: item.spark }),
+							),
+							h("span", { className: "ssp-pos-price" }, formatTokens(item.rate)),
+							h(ChangeBadge, { t, value: item.unpriced ? null : item.chgPct }),
+							h("span", { className: "ssp-pos-share" }, h("span", { className: "ssp-pos-bar" }, h("span", { className: "ssp-pos-bar-fill", style: { width: `${Math.max(1, share * 100).toFixed(1)}%`, background: item.color } }))),
+							h("span", { className: "ssp-pos-tokens" }, formatTokens(item.tokens)),
+							h("span", { className: "ssp-pos-cost" }, item.unpriced ? t("models.unpriced") : `${symbolText}${formatMoney(item.costCNY)}`),
+						);
+					}),
+				),
+			);
+		}
+
+		/** K-line terminal view (the playful one): quote header, index strip, chart, watchlist, tape, positions. */
+		function TerminalView(props) {
+			const { mode, onModeChange } = props;
+			const t = typeof props.t === "function" ? props.t : (key) => key;
+			const [windowKey, setWindowKey] = react.useState(null);
+			const [currency, setCurrency] = react.useState("CNY");
+			const [view, setView] = react.useState(() => {
+				try {
+					return window.localStorage.getItem("dsh-session-stats:chart") === "candles" ? "candles" : "bars";
+				} catch {
+					return "bars";
+				}
+			});
+			const changeView = (next) => {
+				setView(next);
+				try {
+					window.localStorage.setItem("dsh-session-stats:chart", next);
+				} catch {
+					// storage unavailable (private mode) — the toggle still works for this session
+				}
+			};
+			const [priceMode, setPriceMode] = react.useState("tokens");
+			const [selected, setSelected] = react.useState("ALL");
+			const [hover, setHover] = react.useState(-1);
+			const [reloadKey, setReloadKey] = react.useState(0);
+			const overview = useOverview(windowKey, reloadKey);
+			const live = useLive();
+			const data = overview.data;
+			const totals = data !== null && data.totals ? data.totals : null;
+			const loading = data === null && overview.status !== "error";
+			const placeholder = t("state.placeholder");
+			const effectiveWindow = windowKey ?? (data !== null && data.window && data.window.key ? data.window.key : "7d");
+			const currencyRate = data !== null && Number(data.currency?.usdRate) > 0 ? Number(data.currency.usdRate) : 7.1;
+			const symbolText = currency === "CNY" ? "¥" : "$";
+			const terminal = data !== null && data.terminal ? data.terminal : null;
+			const symbols = terminal !== null && Array.isArray(terminal.symbols) ? terminal.symbols : [];
+			const indices = terminal !== null && Array.isArray(terminal.indices) ? terminal.indices : [];
+			const tape = terminal !== null && Array.isArray(terminal.tape) ? terminal.tape : [];
+			const models = data !== null && Array.isArray(data.models) ? data.models : [];
+			const candles = terminal !== null && terminal.candles ? terminal.candles : { period: "-", bars: [] };
+			const bars = candles.bars;
+			const periodMs = bars.length > 1 ? Math.max(1, bars[1].t - bars[0].t) : 300_000;
+			const windowMinutes = data !== null && data.window ? Math.max(1, (data.window.to - data.window.from) / 60_000) : 1;
+			const selectedSymbol = selected !== "ALL" && !indices.some((item) => item.key === selected) ? symbols.find((item) => item.route === selected) ?? null : null;
+			const selectedIndex = indices.find((item) => item.key === selected) ?? null;
+			let chartBars = bars;
+			let instrumentTitle = t("watch.all");
+			if (selectedSymbol !== null) {
+				instrumentTitle = `${selectedSymbol.code} ${selectedSymbol.name}`;
+				chartBars = bars.map((bar) => {
+					const entry = (bar.byModel ?? []).find((model) => model.route === selectedSymbol.route);
+					const tokens = entry ? entry.tokens : 0;
+					const rate = tokens / Math.max(1, periodMs / 60_000);
+					return { ...bar, o: rate, h: rate, l: rate, c: rate, tokens, vol: tokens > 0 ? 1 : 0, byModel: entry ? [{ route: entry.route, tokens }] : [] };
+				});
+			} else if (selectedIndex !== null) {
+				instrumentTitle = t(`index.${selectedIndex.key}`, { defaultValue: selectedIndex.label });
+				const values = Array.isArray(selectedIndex.spark) ? selectedIndex.spark : [];
+				const scale = Math.max(1, values.length);
+				const stepMs = (periodMs * bars.length) / scale;
+				chartBars = values.map((value, index) => {
+					const previous = index === 0 ? value : values[index - 1];
+					const o = Number(previous) || 0;
+					const c = Number(value) || 0;
+					return { t: bars.length > 0 ? bars[0].t + index * stepMs : index * stepMs, o, h: Math.max(o, c), l: Math.min(o, c), c, tokens: c, vol: Math.abs(c) > 0 ? 1 : 0, costCNY: 0, calls: 0, sessions: 0, cacheHit: 0, byModel: [], empty: c === 0 && o === 0 };
+				});
+			}
+			const zoneOffset = data !== null && data.window && Number.isFinite(data.window.offsetMs) ? Number(data.window.offsetMs) : 8 * 3_600_000;
+			const priceFactor = priceMode === "cost";
+			const lastBar = chartBars.length > 0 ? chartBars[chartBars.length - 1] : null;
+			const firstBar = chartBars.find((bar) => !bar.empty) ?? null;
+			const currentRate = lastBar === null ? 0 : priceFactor ? lastBar.costCNY / Math.max(1, periodMs / 60_000) : lastBar.c;
+			const openRate = firstBar === null ? 0 : priceFactor ? firstBar.o : firstBar.o;
+			const highRate = chartBars.length === 0 ? 0 : Math.max(...chartBars.map((bar) => (priceFactor ? bar.h * (bar.tokens > 0 ? bar.costCNY / bar.tokens : 1) : bar.h)));
+			const lowRate = chartBars.length === 0 ? 0 : Math.min(...chartBars.map((bar) => (priceFactor ? bar.l * (bar.tokens > 0 ? bar.costCNY / bar.tokens : 1) : bar.l)));
+			const avgRate = chartBars.length === 0 ? 0 : chartBars.reduce((sum, bar) => sum + (priceFactor ? bar.costCNY : bar.c), 0) / chartBars.length;
+			const chgPct = openRate > 0 ? (currentRate - openRate) / openRate : null;
+			const amplitude = openRate > 0 ? (highRate - lowRate) / openRate : null;
+			const priceFormat = (value) => (priceFactor ? `¥${formatMoney(value)}` : formatTokens(value));
+			const stats = [
+				{ key: "open", value: priceFormat(openRate) },
+				{ key: "high", value: priceFormat(highRate) },
+				{ key: "low", value: priceFormat(lowRate) },
+				{ key: "avg", value: priceFormat(avgRate) },
+				{ key: "amplitude", value: formatPercent(amplitude ?? 0) },
+			];
+			const tabs = [
+				{ key: "24h", label: t("window.24h") },
+				{ key: "7d", label: t("window.7d") },
+				{ key: "14d", label: t("window.14d") },
+				{ key: "30d", label: t("window.30d") },
+			];
+			return h(
+				"div",
+				{ className: "ssp-term ssp-root", "data-testid": "session-stats-page", "data-loading": loading ? "true" : "false" },
+				h(
+					"div",
+					{ className: "ssp-term-page" },
+					h(
+						"header",
+						{ className: "ssp-term-head" },
+						h("div", { className: "ssp-term-brand" }, h("h1", { className: "ssp-term-title" }, h("span", { className: "ssp-live-dot" }), t("panel")), h("span", { className: "ssp-term-sub" }, t("terminal.sub"))),
+						h(
+							"div",
+							{ className: "ssp-term-controls" },
+							h(
+								"div",
+								{ className: "ssp-tabs", role: "tablist" },
+								tabs.map((tab) => h("button", { key: tab.key, type: "button", role: "tab", "aria-selected": effectiveWindow === tab.key ? "true" : "false", className: `ssp-tab${effectiveWindow === tab.key ? " ssp-tab-active" : ""}`, onClick: () => setWindowKey(tab.key) }, tab.label)),
+							),
+							h(
+								"div",
+								{ className: "ssp-currency", role: "radiogroup", "aria-label": t("currency.aria") },
+								["CNY", "USD"].map((code) =>
+									h(
+										"button",
+										{
+											key: code,
+											type: "button",
+											role: "radio",
+											className: "ssp-cur",
+											"aria-checked": currency === code ? "true" : "false",
+											onClick: () => setCurrency(code),
+										},
+										code,
+									),
+								),
+							),
+							h(
+								"div",
+								{ className: "ssp-view-toggle", role: "group", "aria-label": t("view.aria") },
+								h("button", { type: "button", className: `ssp-view-btn${view === "bars" ? " ssp-view-active" : ""}`, onClick: () => changeView("bars"), "aria-pressed": view === "bars" ? "true" : "false" }, t("chart.bars")),
+								h("button", { type: "button", className: `ssp-view-btn${view === "candles" ? " ssp-view-active" : ""}`, onClick: () => changeView("candles"), "aria-pressed": view === "candles" ? "true" : "false" }, t("chart.candles")),
+							),
+							h(
+								"div",
+								{ className: "ssp-view-toggle", role: "group", "aria-label": t("priceMode.aria") },
+								h("button", { type: "button", className: `ssp-view-btn${priceMode === "tokens" ? " ssp-view-active" : ""}`, onClick: () => setPriceMode("tokens"), "aria-pressed": priceMode === "tokens" ? "true" : "false" }, t("priceMode.tokens")),
+								h("button", { type: "button", className: `ssp-view-btn${priceMode === "cost" ? " ssp-view-active" : ""}`, onClick: () => setPriceMode("cost"), "aria-pressed": priceMode === "cost" ? "true" : "false" }, t("priceMode.cost")),
+							),
+							h(ModeToggle, { t, mode, onModeChange }),
+						),
+					),
+					overview.status === "error" ? h("div", { className: "ssp-term-error" }, t("state.error", { message: overview.error ?? "" }), h("button", { type: "button", className: "ssp-retry", onClick: () => setReloadKey((value) => value + 1) }, t("state.retry"))) : null,
+					h(Ticker, { t, indices, symbols, totalTokens: totals === null ? 0 : totals.tokens }),
+					h(
+						"section",
+						{ className: "ssp-index-strip", "aria-label": t("index.aria") },
+						indices.length === 0
+							? h("div", { className: "ssp-term-empty" }, t("state.receiving"))
+							: indices.map((item) => h(IndexCell, { key: item.key, t, item, selected: selected === item.key, onSelect: (key) => setSelected(selected === key ? "ALL" : key) })),
+					),
+					h(InstrumentHeader, {
+						t,
+						title: instrumentTitle,
+						unit: priceFactor ? t("unit.costRate") : t("unit.tokenRate"),
+						price: data === null ? placeholder : priceFormat(currentRate),
+						chgPct,
+						stats,
+					}),
+					h(
+						"section",
+						{ className: "ssp-card ssp-term-chart-card", "aria-label": t("chart.aria") },
+						h(
+							"div",
+							{ className: "ssp-term-chart-head" },
+							h("div", null, h("div", { className: "ssp-card-title" }, t("chart.title")), h("div", { className: "ssp-card-sub" }, `${candles.period} · ${t(view === "candles" ? "chart.candles" : "chart.bars")} · ${priceFactor ? t("priceMode.cost") : t("priceMode.tokens")}`)),
+							h("div", { className: "ssp-term-ohlc" }, lastBar === null ? "--" : `O ${priceFormat(lastBar.o)}  H ${priceFormat(lastBar.h)}  L ${priceFormat(lastBar.l)}  C ${priceFormat(lastBar.c)}`),
+						),
+						data === null
+							? h("div", { className: "ssp-term-chart-empty" }, h("div", { className: "ssp-term-chart-empty-ring" }), h("div", { className: "ssp-card-sub" }, t("state.receiving")))
+							: h(TerminalChart, { t, bars: chartBars, view, priceMode, period: candles.period, periodMs, models, hover, onHover: setHover, placeholder: t("state.receiving"), offsetMs: zoneOffset }),
+					),
+					h(
+						"section",
+						{ className: "ssp-term-grid" },
+						h(Watchlist, { t, symbols, selected, onSelect: setSelected, currency, symbolText }),
+						h(Tape, { t, tape, currency, symbolText, rate: currencyRate, offsetMs: zoneOffset }),
+					),
+					h(Positions, { t, symbols, totals, currency, symbolText, models }),
+					h(
+						"footer",
+						{ className: "ssp-term-status" },
+						h("span", null, `${t("status.data")} · ${data === null ? placeholder : t("window." + effectiveWindow)} · ${totals === null ? placeholder : totals.sessions} ${t("status.sessions")} · ${t("status.sampled")} ${formatClock(data === null ? Date.now() : data.generatedAt, zoneOffset)}`),
+						h("span", { className: "ssp-term-status-right" }, `${t("term.priceTable")} ${data !== null && data.pricing ? data.pricing.tableVersion : "--"}`),
+					),
+				),
+			);
+		}
+		//#endregion
+
 		//#region page
-		function SessionStatsPage(props) {
+		/** The original stats layout (the primary view). */
+		function StatsView(props) {
+			const { mode, onModeChange } = props;
 			const t = typeof props.t === "function" ? props.t : (key) => key;
 			// null = follow the host's configured default window (learned from the first response).
 			const [windowKey, setWindowKey] = react.useState(null);
@@ -1342,6 +2391,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 									t("currency.usd"),
 								),
 							),
+							h(ModeToggle, { t, mode, onModeChange }),
 						),
 					),
 					overview.error === null
@@ -1441,6 +2491,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 							otherColor,
 							limit: 10,
 						}),
+						h(CostDonutCard, { t, data, currency, symbol, placeholder }),
 					),
 					h(ModelDetailCard, {
 						t,
@@ -1458,6 +2509,40 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 			);
 		}
 		//#endregion
+
+		/** Small `统计 | K线` switch, styled exactly like the currency toggle. */
+		function ModeToggle({ t, mode, onModeChange }) {
+			return h(
+				"div",
+				{ className: "ssp-view-toggle", role: "group", "aria-label": t("mode.aria") },
+				h("button", { type: "button", className: `ssp-view-btn${mode === "terminal" ? "" : " ssp-view-active"}`, onClick: () => onModeChange("stats"), "aria-pressed": mode === "terminal" ? "false" : "true" }, t("mode.stats")),
+				h("button", { type: "button", className: `ssp-view-btn${mode === "terminal" ? " ssp-view-active" : ""}`, onClick: () => onModeChange("terminal"), "aria-pressed": mode === "terminal" ? "true" : "false" }, t("mode.terminal")),
+			);
+		}
+
+		/**
+		 * Panel entry. The original stats layout stays the primary view; the K-line
+		 * terminal is an optional skin one tap away, remembered like a theme choice.
+		 */
+		function SessionStatsPage(props) {
+			const [mode, setMode] = react.useState(() => {
+				try {
+					return window.localStorage.getItem("dsh-session-stats:mode") === "terminal" ? "terminal" : "stats";
+				} catch {
+					return "stats";
+				}
+			});
+			const changeMode = (next) => {
+				setMode(next);
+				try {
+					window.localStorage.setItem("dsh-session-stats:mode", next);
+				} catch {
+					// storage unavailable — the switch still works for this session
+				}
+			};
+			const View = mode === "terminal" ? TerminalView : StatsView;
+			return h(View, { ...props, mode, onModeChange: changeMode });
+		}
 
 		//#region plugin
 		const inject = ["slots", "locale"];
@@ -1480,7 +2565,7 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 					{
 						name: "sidebar.panellist",
 						id: PANEL_ID,
-						order: 20,
+						order: -10,
 						locale: NS,
 						label: () => t("panel"),
 					},
