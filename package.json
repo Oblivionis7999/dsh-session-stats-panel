@@ -54,5 +54,14 @@
   },
   "bugs": {
     "url": "https://github.com/Oblivionis7999/dsh-session-stats-panel/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "selfcheck": "node tools/selfcheck.mjs && node tools/selfcheck-host.mjs && node tools/selfcheck-client.mjs"
   }
 }
