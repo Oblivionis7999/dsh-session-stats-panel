@@ -1778,6 +1778,118 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			);
 		}
 
+		/**
+		 * Merge consecutive buckets so a bar series fits the available width.
+		 *
+		 * Bar mode is a magnitude comparison, so a period that was merged must add
+		 * its tokens/calls up rather than discard them; candles keep the raw
+		 * buckets because OHLC would lose meaning under merging.
+		 * @param {object[]} bars - raw candle buckets.
+		 * @param {number} target - approximate number of bars to keep.
+		 * @returns {object[]} merged buckets.
+		 */
+		function mergeBars(bars, target) {
+			const list = Array.isArray(bars) ? bars : [];
+			if (list.length <= target || target < 1) return list;
+			const groupSize = Math.ceil(list.length / target);
+			const out = [];
+			for (let index = 0; index < list.length; index += groupSize) {
+				const group = list.slice(index, index + groupSize);
+				const merged = { t: group[0].t, tokens: 0, costCNY: 0, calls: 0, sessions: 0, vol: 0, empty: true, byModel: [] };
+				const byModel = new Map();
+				let tokenSum = 0;
+				let cacheWeighted = 0;
+				for (const bar of group) {
+					const tokens = Number(bar.tokens) || 0;
+					merged.tokens += tokens;
+					merged.costCNY += Number(bar.costCNY) || 0;
+					merged.calls += Number(bar.calls) || 0;
+					merged.sessions += Number(bar.sessions) || 0;
+					merged.vol += Number(bar.vol) || 0;
+					tokenSum += tokens;
+					cacheWeighted += (Number(bar.cacheHit) || 0) * tokens;
+					if (!bar.empty) merged.empty = false;
+					for (const segment of Array.isArray(bar.byModel) ? bar.byModel : []) {
+						byModel.set(segment.route, (byModel.get(segment.route) ?? 0) + (Number(segment.tokens) || 0));
+					}
+				}
+				merged.byModel = [...byModel].map(([route, tokens]) => ({ route, tokens })).sort((a, b) => b.tokens - a.tokens);
+				merged.cacheHit = tokenSum > 0 ? cacheWeighted / tokenSum : 0;
+				merged.o = merged.tokens;
+				merged.h = merged.tokens;
+				merged.l = merged.tokens;
+				merged.c = merged.tokens;
+				out.push(merged);
+			}
+			return out;
+		}
+
+		/**
+		 * Merge consecutive buckets into real OHLC candles.
+		 *
+		 * Merging must preserve candle semantics: open is the group's first open,
+		 * close is the group's last close, high/low are the extremes. Empty buckets
+		 * are dropped instead of being carried forward at the previous close, which
+		 * is what turned long quiet stretches into flat plateaus.
+		 * @param {object[]} bars - raw buckets (may contain empty ones).
+		 * @param {number} target - approximate candle count to keep.
+		 * @returns {object[]} merged candles.
+		 */
+		function mergeCandles(bars, target) {
+			const source = Array.isArray(bars) ? bars : [];
+			if (source.length === 0) return [];
+			if (source.length <= target || target < 1) return source;
+			// Group by wall clock, not by "how many non-empty bars are left": the
+			// x axis must stay linear in time, so a quiet stretch keeps its slot.
+			const groupSize = Math.max(1, Math.ceil(source.length / target));
+			const out = [];
+			for (let index = 0; index < source.length; index += groupSize) {
+				const group = source.slice(index, index + groupSize);
+				const active = group.filter((bar) => !bar.empty);
+				if (active.length === 0) {
+					out.push({ t: group[0].t, o: 0, h: 0, l: 0, c: 0, tokens: 0, costCNY: 0, calls: 0, sessions: 0, vol: 0, cacheHit: 0, byModel: [], empty: true });
+					continue;
+				}
+				const live = active;
+				const byModel = new Map();
+				let tokens = 0;
+				let costCNY = 0;
+				let calls = 0;
+				let sessions = 0;
+				let cacheWeighted = 0;
+				let high = -Infinity;
+				let low = Infinity;
+				for (const bar of live) {
+					high = Math.max(high, Number(bar.h) || 0);
+					low = Math.min(low, Number(bar.l) || 0);
+					tokens += Number(bar.tokens) || 0;
+					costCNY += Number(bar.costCNY) || 0;
+					calls += Number(bar.calls) || 0;
+					sessions += Number(bar.sessions) || 0;
+					cacheWeighted += (Number(bar.cacheHit) || 0) * (Number(bar.tokens) || 0);
+					for (const segment of Array.isArray(bar.byModel) ? bar.byModel : []) {
+						byModel.set(segment.route, (byModel.get(segment.route) ?? 0) + (Number(segment.tokens) || 0));
+					}
+				}
+				out.push({
+					t: group[0].t,
+					o: Number(live[0].o) || 0,
+					h: high === -Infinity ? 0 : high,
+					l: low === Infinity ? 0 : low,
+					c: Number(live[live.length - 1].c) || 0,
+					tokens,
+					costCNY,
+					calls,
+					sessions,
+					vol: calls,
+					cacheHit: tokens > 0 ? cacheWeighted / tokens : 0,
+					byModel: [...byModel].map(([route, value]) => ({ route, tokens: value })).sort((a, b) => b.tokens - a.tokens),
+					empty: false,
+				});
+			}
+			return out;
+		}
+
 		/** Main chart: candlesticks or stacked bars + MA lines + volume + crosshair. */
 		function TerminalChart({ t, bars, view, priceMode, period, periodMs, models, hover, onHover, placeholder, offsetMs = 8 * 3_600_000 }) {
 			const list = Array.isArray(bars) ? bars : [];
@@ -1813,7 +1925,22 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			const max = rawMax + pad;
 			const scaleY = (value) => priceBottom - ((value - min) / (max - min || 1)) * (priceBottom - priceTop);
 			const barWidth = plotWidth / list.length;
-			const bodyWidth = Math.max(1, barWidth * 0.62);
+			const bodyWidth = Math.max(0.8, Math.min(barWidth * 0.62, 14));
+			// Bar height must be comparable across the whole chart: scale every bar
+			// against the busiest one. Normalising each bar to its own total would
+			// make every bar equally tall, which is what made the chart unreadable.
+			// Bars are bucket totals; plot them per minute so the axis matches the
+			// header's "tokens/min" unit instead of a mixed magnitude.
+			const minutesPerBar = Math.max(1, Number(periodMs) / 60_000);
+			const priceValueOf = (bar) =>
+				priceMode === "cost" ? (Number(bar.costCNY) || 0) / minutesPerBar : (Number(bar.tokens) || 0) / minutesPerBar;
+			let maxBarValue = 0;
+			for (const bar of list) {
+				if (bar.empty) continue;
+				const value = priceValueOf(bar);
+				if (value > maxBarValue) maxBarValue = value;
+			}
+			if (!(maxBarValue > 0)) maxBarValue = 1;
 			const wickUp = [];
 			const wickDown = [];
 			const bodies = [];
@@ -1827,15 +1954,18 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				const x = left + index * barWidth + barWidth / 2;
 				if (isBars) {
 					if (raw.empty) {
-						bodies.push(h("rect", { key: `b${index}-empty`, x: (x - bodyWidth / 2).toFixed(2), y: priceTop, width: bodyWidth.toFixed(2), height: priceBottom - priceTop, fill: "url(#ssp-hatch)" }));
+						// A quiet period is a hairline on the baseline, not a full-height block.
+						bodies.push(h("rect", { key: `b${index}-empty`, className: "ssp-term-bar-empty", x: (x - bodyWidth / 2).toFixed(2), y: (priceBottom - 2).toFixed(2), width: bodyWidth.toFixed(2), height: 2, fill: "var(--ssp-text-3)", opacity: 0.18 }));
 						continue;
 					}
 					const segments = Array.isArray(raw.byModel) && raw.byModel.length > 0 ? raw.byModel : raw.tokens > 0 ? [{ route: "__all", tokens: raw.tokens }] : [];
 					const totalTokens = segments.reduce((sum, segment) => sum + (Number(segment.tokens) || 0), 0) || 1;
+					// Absolute height for this bar, then split it across models.
+					const barHeight = Math.max(1, (priceValueOf(raw) / maxBarValue) * (priceBottom - priceTop));
 					let cursor = priceBottom;
 					for (const segment of segments) {
-						const value = (Number(segment.tokens) || 0) / totalTokens;
-						const height = value * (priceBottom - priceTop);
+						const share = (Number(segment.tokens) || 0) / totalTokens;
+						const height = share * barHeight;
 						if (height <= 0) continue;
 						cursor -= height;
 						const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
@@ -1844,8 +1974,8 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 					// Volume subchart is shared by both forms (calls per period).
 					let volumeCursor = volumeBottom;
 					for (const segment of segments) {
-						const value = (Number(segment.tokens) || 0) / totalTokens;
-						const segmentHeight = value * (volumeBottom - volumeTop) * (raw.vol > 0 ? 1 : 0);
+						const share = (Number(segment.tokens) || 0) / totalTokens;
+						const segmentHeight = share * (volumeBottom - volumeTop) * ((Number(raw.vol) || 0) / maxVolume);
 						if (segmentHeight <= 0) continue;
 						volumeCursor -= segmentHeight;
 						const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
@@ -1880,8 +2010,8 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				const segments = Array.isArray(raw.byModel) && raw.byModel.length > 0 ? raw.byModel : raw.tokens > 0 ? [{ route: "__all", tokens: raw.tokens }] : [];
 				const totalTokens = segments.reduce((sum, segment) => sum + (Number(segment.tokens) || 0), 0) || 1;
 				for (const segment of segments) {
-					const value = (Number(segment.tokens) || 0) / totalTokens;
-					const segmentHeight = value * (volumeBottom - volumeTop) * (raw.vol > 0 ? 1 : 0);
+					const share = (Number(segment.tokens) || 0) / totalTokens;
+					const segmentHeight = share * (volumeBottom - volumeTop) * ((Number(raw.vol) || 0) / maxVolume);
 					if (segmentHeight <= 0) continue;
 					cursor -= segmentHeight;
 					const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
@@ -1890,15 +2020,30 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				colors.push(raw.empty);
 			}
 			// Moving averages over closes.
+			// Moving average must break across quiet stretches: joining them draws a
+			// line through periods that had no activity at all.
 			const ma = (window) => {
-				const points = [];
+				const segments = [];
+				let points = [];
 				for (let index = 0; index < priced.length; index += 1) {
+					if (priced[index].empty) {
+						if (points.length > 1) segments.push(points.join("L"));
+						points = [];
+						continue;
+					}
 					if (index < window - 1) continue;
 					let sum = 0;
-					for (let cursor = index - window + 1; cursor <= index; cursor += 1) sum += priced[cursor].c;
-					points.push(`${(left + index * barWidth + barWidth / 2).toFixed(2)},${scaleY(sum / window).toFixed(2)}`);
+					let count = 0;
+					for (let cursor = index - window + 1; cursor <= index; cursor += 1) {
+						if (priced[cursor].empty) continue;
+						sum += priced[cursor].c;
+						count += 1;
+					}
+					if (count === 0) continue;
+					points.push(`${(left + index * barWidth + barWidth / 2).toFixed(2)},${scaleY(sum / count).toFixed(2)}`);
 				}
-				return points.length > 1 ? `M${points.join("L")}` : "";
+				if (points.length > 1) segments.push(points.join("L"));
+				return segments.length > 0 ? segments.map((segment) => `M${segment}`).join(" ") : "";
 			};
 			const ma5 = isBars ? "" : ma(5);
 			const ma10 = isBars ? "" : ma(10);
@@ -1912,10 +2057,18 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			};
 			const hoverBar = hover >= 0 && hover < list.length ? list[hover] : null;
 			const hoverPriced = hover >= 0 && hover < priced.length ? priced[hover] : null;
-			const priceTicks = [0, 0.5, 1].map((fraction) => {
-				const value = min + (max - min) * fraction;
-				return { value, y: scaleY(value) };
-			});
+			// Bar mode plots absolute totals, so its axis must follow the same scale
+			// as the bars (0 → busiest period) instead of the candle price range.
+			const priceTicks = isBars
+				? [
+						{ value: 0, y: priceBottom },
+						{ value: maxBarValue / 2, y: (priceBottom + priceTop) / 2 },
+						{ value: maxBarValue, y: priceTop },
+					]
+				: [0, 0.5, 1].map((fraction) => {
+						const value = min + (max - min) * fraction;
+						return { value, y: scaleY(value) };
+					});
 			const timeTicks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
 				const index = Math.min(list.length - 1, Math.round(fraction * (list.length - 1)));
 				return { index, label: formatClock(list[index].t, offsetMs).slice(0, 5) };
@@ -2178,12 +2331,37 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			}
 			const zoneOffset = data !== null && data.window && Number.isFinite(data.window.offsetMs) ? Number(data.window.offsetMs) : 8 * 3_600_000;
 			const priceFactor = priceMode === "cost";
+			// Bar mode shows magnitudes, so merging neighbouring buckets keeps every
+			// bar visible without losing totals. Do it here, before any number is
+			// derived, so the header, the axis and the bars all describe one series.
+			// Merge only when a bar would otherwise be thinner than ~5 CSS px; that
+			// keeps 7d's hourly bars intact instead of collapsing them into 2h.
+			const barTarget = Math.max(24, Math.floor((1000 - 8 - 72) / 5));
+			const displayBars = view === "bars" ? mergeBars(chartBars, barTarget) : mergeCandles(chartBars, barTarget);
+			// Both forms may merge buckets. Measure the real spacing of the drawn
+			// bars instead of inferring it from counts: candles drop empty buckets
+			// first, so a count ratio would overstate the period.
+			const measuredPeriodMs =
+				displayBars.length > 1 ? Math.max(1, displayBars[1].t - displayBars[0].t) : periodMs;
+			const displayPeriodMs = measuredPeriodMs > periodMs ? measuredPeriodMs : periodMs;
+			// Bar values are bucket totals; express them per minute so the header,
+			// the axis and the candle view all use one unit (tokens/min).
+			const perMinute = Math.max(1, displayPeriodMs / 60_000);
+			chartBars = view === "bars" ? displayBars.map((bar) => {
+				const rate = priceFactor ? bar.costCNY / perMinute : bar.tokens / perMinute;
+				return { ...bar, o: rate, h: rate, l: rate, c: rate, tokensPerMin: bar.tokens / perMinute, costPerMin: bar.costCNY / perMinute };
+			}) : displayBars;
+			// Label must describe what is actually drawn, not the raw resolution.
+			const displayPeriodText = displayPeriodMs !== periodMs ? `${Math.round(displayPeriodMs / 60_000)}m` : candles.period;
 			const lastBar = chartBars.length > 0 ? chartBars[chartBars.length - 1] : null;
 			const firstBar = chartBars.find((bar) => !bar.empty) ?? null;
-			const currentRate = lastBar === null ? 0 : priceFactor ? lastBar.costCNY / Math.max(1, periodMs / 60_000) : lastBar.c;
+			const currentRate = lastBar === null ? 0 : lastBar.c;
 			const openRate = firstBar === null ? 0 : priceFactor ? firstBar.o : firstBar.o;
-			const highRate = chartBars.length === 0 ? 0 : Math.max(...chartBars.map((bar) => (priceFactor ? bar.h * (bar.tokens > 0 ? bar.costCNY / bar.tokens : 1) : bar.h)));
-			const lowRate = chartBars.length === 0 ? 0 : Math.min(...chartBars.map((bar) => (priceFactor ? bar.l * (bar.tokens > 0 ? bar.costCNY / bar.tokens : 1) : bar.l)));
+			// Quiet periods must not drag "low" down to zero: only buckets that
+			// actually carried usage define the range.
+			const activeBars = chartBars.filter((bar) => !bar.empty && bar.c > 0);
+			const highRate = activeBars.length === 0 ? 0 : Math.max(...activeBars.map((bar) => bar.h));
+			const lowRate = activeBars.length === 0 ? 0 : Math.min(...activeBars.map((bar) => bar.l));
 			const avgRate = chartBars.length === 0 ? 0 : chartBars.reduce((sum, bar) => sum + (priceFactor ? bar.costCNY : bar.c), 0) / chartBars.length;
 			const chgPct = openRate > 0 ? (currentRate - openRate) / openRate : null;
 			const amplitude = openRate > 0 ? (highRate - lowRate) / openRate : null;
@@ -2275,12 +2453,12 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 						h(
 							"div",
 							{ className: "ssp-term-chart-head" },
-							h("div", null, h("div", { className: "ssp-card-title" }, t("chart.title")), h("div", { className: "ssp-card-sub" }, `${candles.period} · ${t(view === "candles" ? "chart.candles" : "chart.bars")} · ${priceFactor ? t("priceMode.cost") : t("priceMode.tokens")}`)),
+							h("div", null, h("div", { className: "ssp-card-title" }, t("chart.title")), h("div", { className: "ssp-card-sub" }, `${displayPeriodText} · ${t(view === "candles" ? "chart.candles" : "chart.bars")} · ${priceFactor ? t("priceMode.cost") : t("priceMode.tokens")}`)),
 							h("div", { className: "ssp-term-ohlc" }, lastBar === null ? "--" : `O ${priceFormat(lastBar.o)}  H ${priceFormat(lastBar.h)}  L ${priceFormat(lastBar.l)}  C ${priceFormat(lastBar.c)}`),
 						),
 						data === null
 							? h("div", { className: "ssp-term-chart-empty" }, h("div", { className: "ssp-term-chart-empty-ring" }), h("div", { className: "ssp-card-sub" }, t("state.receiving")))
-							: h(TerminalChart, { t, bars: chartBars, view, priceMode, period: candles.period, periodMs, models, hover, onHover: setHover, placeholder: t("state.receiving"), offsetMs: zoneOffset }),
+							: h(TerminalChart, { t, bars: chartBars, view, priceMode, period: displayPeriodText, periodMs: displayPeriodMs, models, hover, onHover: setHover, placeholder: t("state.receiving"), offsetMs: zoneOffset }),
 					),
 					h(
 						"section",

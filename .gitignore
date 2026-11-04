@@ -10,3 +10,4 @@ Thumbs.db
 .auth-url.txt
 .publish.log
 *.bak-*
+_real*.json
