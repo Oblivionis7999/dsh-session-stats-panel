@@ -449,11 +449,38 @@ check(
     const paths = findNodes(candleRender.tree, (node) => node.type === "path" && String(node.props.className ?? "").includes("ssp-candle-wick"));
     assert.ok(paths.length >= 1, "wick paths");
     assert.ok(candleRender.text.some((value) => value.startsWith("MA5")));
-    // <title> per candle for accessibility.
+    // No SVG <title>: it pops a native tooltip on top of the custom hover card.
     const titles = findNodes(candleRender.tree, (node) => node.type === "title");
-    assert.equal(titles.length, SAMPLE_BARS.length);
+    assert.equal(titles.length, 0);
+    // Accessibility text lives on the hit rects instead.
+    const hits = findNodes(candleRender.tree, (node) => node.type === "rect" && typeof node.props["aria-label"] === "string" && / vol \d+$/.test(node.props["aria-label"]));
+    assert.equal(hits.length, SAMPLE_BARS.length);
   },
-  "5 bodies / 3 MA / titles",
+  "5 bodies / 3 MA / aria-label, no <title>",
+);
+
+/** Render the terminal with a hover index and a given zone offset. */
+function renderHover(view, hoverIndex, offsetMs) {
+  const overview = { ...SAMPLE_OVERVIEW, window: { ...SAMPLE_OVERVIEW.window, offsetMs } };
+  stateQueue = ["terminal", "7d", "CNY", view, "tokens", "ALL", hoverIndex, 0, { status: "ready", data: overview, error: null }, SAMPLE_LIVE];
+  return Page({ t: translate });
+}
+check(
+  "crosshair time label honours the window zone offset (non-UTC+8)",
+  () => {
+    const berlin = 1 * 3_600_000;
+    for (const view of ["bars", "candles"]) {
+      for (const index of [0, 3]) {
+        const tree = renderHover(view, index, berlin);
+        const hot = findNodes(tree, (node) => node.type === "text" && String(node.props.className ?? "").includes("ssp-term-axis-hot") && node.props.textAnchor === "middle");
+        assert.equal(hot.length, 1, view + " hot axis label");
+        const d = new Date(SAMPLE_BARS[index].t + berlin);
+        const expected = String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0");
+        assert.equal(hot[0].props.children.join(""), expected, view + "#" + index);
+      }
+    }
+  },
+  "UTC+1 label == axis clock",
 );
 
 check(

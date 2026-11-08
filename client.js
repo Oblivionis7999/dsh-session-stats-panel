@@ -2134,11 +2134,9 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 							h("text", { x: width - right + 8, y: scaleY(last.c) + 4, className: "ssp-term-axis ssp-term-last-tag-text", fill: last.c >= last.o ? "var(--up)" : "var(--down)" }, priceFormat(last.c)),
 						)
 						: h("text", { x: width - right + 8, y: scaleY(hoverPriced.c) + 4, className: "ssp-term-axis ssp-term-axis-hot" }, priceFormat(hoverPriced.c)),
-					hoverBar === null ? null : h("text", { x: left + hover * barWidth + barWidth / 2, y: height - 6, className: "ssp-term-axis ssp-term-axis-hot", textAnchor: "middle" }, formatClock(hoverBar.t).slice(0, 5)),
+					hoverBar === null ? null : h("text", { x: left + hover * barWidth + barWidth / 2, y: height - 6, className: "ssp-term-axis ssp-term-axis-hot", textAnchor: "middle" }, formatClock(hoverBar.t, offsetMs).slice(0, 5)),
 					list.map((bar, index) =>
-						h("rect", { key: `hit${index}`, x: left + index * barWidth, y: priceTop, width: barWidth, height: volumeBottom - priceTop, fill: "transparent" },
-							h("title", null, `${formatRange(bar.t, periodMs, offsetMs)} O${priceFormat(bar.o)} H${priceFormat(bar.h)} L${priceFormat(bar.l)} C${priceFormat(bar.c)} vol ${bar.vol}`),
-						),
+						h("rect", { key: `hit${index}`, x: left + index * barWidth, y: priceTop, width: barWidth, height: volumeBottom - priceTop, fill: "transparent", "aria-label": `${formatRange(bar.t, periodMs, offsetMs)} O${priceFormat(bar.o)} H${priceFormat(bar.h)} L${priceFormat(bar.l)} C${priceFormat(bar.c)} vol ${bar.vol}` }),
 					),
 				),
 				h("div", { className: "ssp-term-legend" },
