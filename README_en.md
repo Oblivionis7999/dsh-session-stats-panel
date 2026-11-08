@@ -10,7 +10,7 @@
   <p><b>Zero third-party dependencies</b> · charts are hand-written SVG · reads your local session log, uploads nothing</p>
 
   <p>
-    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.0-12b886" alt="Version"></a>
+    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.1-12b886" alt="Version"></a>
     <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.5-12b886" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="License"></a>
     <a href="https://github.com/Oblivionis7999/dsh-session-stats-panel/stargazers"><img src="https://img.shields.io/github/stars/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="Stars"></a>
@@ -79,7 +79,7 @@ Measured on this machine (about 170 sessions, roughly 375 MB of logs): a cold fu
 This is a DSH plugin, not a separate app. `dsh plugin add` records the dependency in your profile and stacks the bundled `cordis.patch.yml` into the bundle layer, so you do not edit the profile by hand.
 
 ```powershell
-# 1) from npm (available once 3.1.0 is published)
+# 1) from npm (recommended)
 dsh plugin --profile web add dsh-session-stats-panel
 
 # 2) straight from GitHub
@@ -92,7 +92,7 @@ dsh plugin --profile web add "link:E:\path\to\dsh-session-stats-panel"
 dsh plugin --profile web remove dsh-session-stats-panel
 ```
 
-> The 3.1.0 build on npm only exists after the release. Until then, install from GitHub with option 2.
+> 3.1.x is already on npm, so you can install it directly; use option 2 to track the latest commit.
 
 Then:
 

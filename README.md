@@ -10,7 +10,7 @@
   <p><b>零第三方依赖</b> · 图表全是手写 SVG · 只读本机会话日志，不上传</p>
 
   <p>
-    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.0-12b886" alt="Version"></a>
+    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.1-12b886" alt="Version"></a>
     <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.5-12b886" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="License"></a>
     <a href="https://github.com/Oblivionis7999/dsh-session-stats-panel/stargazers"><img src="https://img.shields.io/github/stars/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="Stars"></a>
@@ -79,7 +79,7 @@
 装的是 DSH 插件，不是独立软件。`dsh plugin add` 会把依赖写进 profile，把包里的 `cordis.patch.yml` 叠进 bundle 层，不用手改配置。
 
 ```powershell
-# 方式一：从 npm 装（3.1.0 发布之后可用）
+# 方式一：从 npm 装（推荐）
 dsh plugin --profile web add dsh-session-stats-panel
 
 # 方式二：直接从 GitHub 装
@@ -92,7 +92,7 @@ dsh plugin --profile web add "link:E:\path\to\dsh-session-stats-panel"
 dsh plugin --profile web remove dsh-session-stats-panel
 ```
 
-> npm 上的 3.1.0 要等发版之后才有。发版前先用方式二从 GitHub 装。
+> npm 上已经有 3.1.x，可以直接装；想跟最新提交，用方式二。
 
 装完按这个顺序走：
 
