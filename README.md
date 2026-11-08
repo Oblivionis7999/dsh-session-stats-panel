@@ -1,392 +1,186 @@
-# dsh-session-stats-panel —— DSH「会话统计」侧栏页面
+<p align="center"><strong>简体中文</strong> | <a href="README_en.md">English</a></p>
 
-一个零第三方依赖的本地 DSH Web 插件：在左侧栏「自动化任务」下面新增一个独立的
-**「会话统计」页面**（不是设置页、不是弹窗），复刻会话用量看板：
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Oblivionis7999/dsh-session-stats-panel/main/icon.svg" alt="肥鱼用量分析" width="128">
+  <h1>肥鱼用量分析</h1>
+  <p>
+    DeepSeek Harness 左侧栏的用量统计页面。<br>
+    看 token 和钱花在哪、今天比昨天多还是少，还有 DSH 自己吃多少 CPU 和内存。
+  </p>
+  <p><b>零第三方依赖</b> · 图表全是手写 SVG · 只读本机会话日志，不上传</p>
 
-- 顶部：大标题 + 时间档（近 24 小时 / 近 7 天 / 近 14 天 / 近 30 天）+ 币种（人民币 / 美元）；
-- 第一行四张等宽指标卡：总 Token 消耗、预估成本、会话数、缓存命中率；
-- 第二张横跨整行的「DSH 运行状态」卡：CPU（单核）/ 内存（RSS）/ 事件循环 p99 / 运行时长，
-  外加一条 5 分钟 CPU 面积折线；
-- 第三行并排：「每日消耗」**按模型分色**的堆叠柱状图 +「Token 构成」**按模型分段**的环形图；
-- 第四张横跨整行的「分模型明细」卡：模型 / tokens / 占比条 / 成本。
+  <p>
+    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.0-12b886" alt="Version"></a>
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.5-12b886" alt="DSH">
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="License"></a>
+    <a href="https://github.com/Oblivionis7999/dsh-session-stats-panel/stargazers"><img src="https://img.shields.io/github/stars/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="Stars"></a>
+    <a href="https://github.com/Oblivionis7999/dsh-session-stats-panel/issues"><img src="https://img.shields.io/github/issues/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="Issues"></a>
+    <img src="https://img.shields.io/badge/node-%E2%89%A522.19-12b886" alt="Node">
+  </p>
 
-图表全部是手写内联 SVG / CSS，没有任何图表库；主题跟随宿主明暗色（消费
-`--dsw-alias-*` 设计 token，并带浅色兜底值），浅色为白底 + `#e8eaed` 细边框，
-主色为 `#12b886` / `#0ca678`。图表颜色只取自宿主响应里的 `modelPalette`（10 色：
-绿/蓝/紫/橙/青/粉/黄/靛/棕/灰，绿色只占第一位），深色主题只对色块做亮度/饱和度微调，
-不维护第二套硬编码色板。
+<a href="#这是什么">这是什么</a> • <a href="#效果">效果</a> • <a href="#核心特性">核心特性</a> • <a href="#安装">安装</a> • <a href="#配置">配置</a> • <a href="#页面速览">页面速览</a> • <a href="#数据与隐私">数据与隐私</a> • <a href="#开发与自检">开发与自检</a> • <a href="#常见问题">常见问题</a>
+</div>
 
-## 预览
+## 这是什么
 
-浅色（近 7 天档，按模型分色）：
+一个 DSH 插件。装上之后左侧栏会多一个「肥鱼用量分析」页面，点开就是本机会话的用量统计。名字来自社区对 DeepSeek 的叫法：小鲸鱼，也叫蓝色大肥鱼。
 
-![浅色预览](docs/preview-light.png)
+页面上能看到这些：
 
-深色（跟随宿主主题）：
+- 一共用了多少 token、大概花了多少钱、缓存命中率多少（复用了多少之前读过的内容）
+- 每个模型占多少，每天用了多少
+- 今天比昨天多还是少，月底大概会花多少
+- 最近 8 周哪几天忙，哪些工具和命令用得最多
+- 每个会话花了多少、最后在问什么
 
-![深色预览](docs/preview-dark.png)
+数据全部从本机的会话日志算出来。宿主那边只开几个只读接口，浏览器那边只负责画图。图都是手写的 SVG，没有图表库，包也没有第三方依赖。
 
-## 安装约定：loader id 不能与官方包撞车
+它不上传数据，不改会话日志，也不联网。价格是打包在里面的官方价目表快照。
 
-`cordis.patch.yml` 里的 `id` 是 **loader 表的键**，DSH 按 id 合并 bundle 补丁，**后加载的覆盖先加载的**。
+> 3.0 去掉了 2.x 的 K 线模式，面板只剩统计这一个视图，接口也精简了。
 
-官方 `@deepseek-ai/dsh-session-stats`（在 `dsh-web-app/cordis.patch.yml` 里）已经占用了 `id: session-stats`，它注册的是宿主侧 `sessionStats` 投影（tok/s、墙钟时间）。如果本插件也用 `session-stats`，官方那个投影会**静默不挂载**——界面看不出异常，只是流式输出的计时数据缺失。
+## 效果
 
-因此本插件的 loader id 固定为 **`session-stats-panel`**，并由 `tools/selfcheck.mjs` 断言守住，防止回退。
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/screenshots/panel-light.png"><img src="https://raw.githubusercontent.com/Oblivionis7999/dsh-session-stats-panel/main/docs/screenshots/panel-light.png" alt="浅色主题下的肥鱼用量分析页面" width="100%"></a></td>
+<td width="50%" align="center"><a href="docs/screenshots/panel-dark.png"><img src="https://raw.githubusercontent.com/Oblivionis7999/dsh-session-stats-panel/main/docs/screenshots/panel-dark.png" alt="深色主题下的肥鱼用量分析页面" width="100%"></a></td>
+</tr>
+<tr>
+<td align="center">浅色主题，近 7 天 · 示例数据（已脱敏）</td>
+<td align="center">深色主题，跟着宿主走 · 示例数据（已脱敏）</td>
+</tr>
+</table>
 
-> 插件内部的 `NS` / `PANEL_ID` / `/session-stats/api/*` 属于浏览器与 HTTP 命名空间，与 loader id 无关，可以保持原样。
+<p align="center"><a href="docs/screenshots/panel-full.png"><img src="https://raw.githubusercontent.com/Oblivionis7999/dsh-session-stats-panel/main/docs/screenshots/panel-full.png" alt="肥鱼用量分析整页" width="100%"></a></p>
+<p align="center">整页：分模型明细、热力日历、三个排行和会话列表 · 示例数据（已脱敏）</p>
+
+## 核心特性
+
+| 特性 | 说明 |
+| --- | --- |
+| **四个指标卡** | 总 token、预估成本、会话数、缓存命中率。时间档和币种在右上角切，切币种不发新请求 |
+| **今日概览** | 今天和昨天比：涨了 ▲、跌了 ▼、昨天没数据就是 `—`。今天还没用过，四个都是 `—`，不报错 |
+| **每日消耗** | 一天一根柱子，按模型分颜色。柱子的总和跟指标卡的总数对得上 |
+| **Token 与成本环图** | 两个圈：一个看 token 怎么分的（未缓存输入、输出、缓存读、缓存写），一个看钱花在哪个模型上。颜色和下面的明细表对得上 |
+| **成本预测** | 拿最近 30 天的日成本算一条直线，虚线画到月底，标个大概值。有效天数不够 7 天就不画 |
+| **活跃度热力日历** | 最近 8 周，一天一格，颜色越深用量越大。能在 token 和会话数之间切，鼠标停上去看那天的数字。没活动的日子是浅色，不是空着 |
+| **工具 / 命令 / 技能排行** | 三个榜，按调用次数从多到少排。命令看的是 shell 里跑的第一个词，像 `cd`、`git`；工具那栏还带成功率和平均耗时。名字太长会截断，鼠标停上去看全名 |
+| **分会话列表** | 一个会话一张卡：标题、轮数、步数、token、成本、最后一句提示词。能按标题和提示词搜，能按最近、token、成本排。子会话默认藏起来，可以打开 |
+| **分块加载** | 打开先出指标卡，热力、排行、会话列表后到。切时间档时旧数据不消失，顶上一条进度条 |
+| **运行状态采样** | DSH 自己的 CPU、内存、卡不卡（事件循环延迟）、运行了多久。每 5 秒采一次，下面是最近 5 分钟的 CPU 曲线 |
+| **主题跟随** | 颜色跟着 DSH 的深浅主题走，不另配一套色板 |
+| **原厂价目** | 只按各家官网的价目算。查不到官方价的模型标「未计价」，不猜 |
+
+本机实测（约 170 个会话、约 375 MB 日志）：冷启动全量扫描约 2.4 秒，这一步在 DSH 启动 2 秒后由后台预热跑掉，所以第一次打开面板不用等；overview 响应约 17 kB（15–18 kB 之间浮动），heavy 约 48 kB，heavy 复用同一轮扫描、只多花 3 ms。3.0 之前一次响应 62.8 kB，其中 72% 是已经删掉的 K 线数据。
 
 ## 安装
 
-把仓库克隆/下载到任意目录，下面用 `<插件目录>` 表示它的绝对路径。
-
-```bash
-git clone https://github.com/Oblivionis7999/dsh-session-stats-panel.git
-```
+装的是 DSH 插件，不是独立软件。`dsh plugin add` 会把依赖写进 profile，把包里的 `cordis.patch.yml` 叠进 bundle 层，不用手改配置。
 
 ```powershell
-# 本地开发安装（不复制文件，link 到 profile）
-dsh plugin --profile web add "link:<插件目录>"
+# 方式一：从 npm 装（3.1.0 发布之后可用）
+dsh plugin --profile web add dsh-session-stats-panel
+
+# 方式二：直接从 GitHub 装
+dsh plugin --profile web add "git+https://github.com/Oblivionis7999/dsh-session-stats-panel.git"
+
+# 方式三：本地开发，link 进 profile，不复制文件
+dsh plugin --profile web add "link:E:\path\to\dsh-session-stats-panel"
 
 # 卸载
 dsh plugin --profile web remove dsh-session-stats-panel
 ```
 
-### 从 GitHub 安装（推荐分发给别人）
+> npm 上的 3.1.0 要等发版之后才有。发版前先用方式二从 GitHub 装。
 
-```bash
-dsh plugin --profile web add "git+https://github.com/Oblivionis7999/dsh-session-stats-panel.git"
+装完按这个顺序走：
+
+1. 先把正在跑的 DSH 停掉。跑着的时候依赖会被锁住，装完再起
+2. 用上面任意一条命令安装
+3. 重启 DSH。bundle 列表变了不会热重载
+4. 浏览器 `Ctrl+Shift+R` 强刷一次。客户端产物是打开页面的时候才取的
+5. 左侧栏的面板列表里会多一个 **肥鱼用量分析**（在「插件」「自动化任务」上面），点进去就是
+
+> 插件不占新端口，也不写你的数据。宿主那边只在本地 web 服务上挂几个只读路由。
+
+### 兼容性
+
+| 插件版本 | 状态 | DSH |
+| --- | --- | --- |
+| **3.1.x**（当前） | ✅ 主线：热力日历、三个排行、会话列表、今日概览、成本预测、分块加载、工具成功率 | `>= 0.2.1-rc.5` |
+| 2.x | 🗄 归档 | `>= 0.2.1-rc.5` |
+
+## 配置
+
+所有项都有默认值，不写也能跑。要改就写进 `cordis.patch.yml` 的 `config`：
+
+```yaml
+- insert:
+    - id: session-stats-panel
+      name: dsh-session-stats-panel
+      config:
+        window: 7d                # 默认时间档：24h | 7d | 14d | 30d
+        usdRate: 7.1              # 美元的显示汇率，人民币才是准的
+        timeZone: Asia/Shanghai   # 按哪个时区切天和小时（决定「昨天」从几点算）
+        ttlMs: 60000              # overview 缓存多久（毫秒），0 表示每次重算
+        # 用手机或另一台电脑通过局域网 IP 打开时才要开；
+        # 公网域名一直拒，免得网页用 DNS rebinding 把本地日志读走
+        allowPrivateHosts: false
 ```
-
-装完重启 DSH（bundle 列表变化不支持热重载），浏览器 Ctrl+Shift+R 强刷。
-
-`dsh plugin add` 会把依赖写进 profile 的 `package.json`、把本包的
-`cordis.patch.yml` 叠加进 profile bundle 层。装好后重启/刷新 Web 界面，
-左侧栏「自动化任务」下面就会出现「会话统计」。
-
-> 本包**不修改**任何 profile 配置、不监听端口、不写用户数据；宿主半只注册两条
-> 只读 HTTP 路由。
-
-## 目录结构
-
-```
-dsh-session-stats-panel/
-├─ package.json          # name / type: module / main: lib/index.js / dsh.bundle.patch / dsh.client
-├─ cordis.patch.yml      # bundle patch：insert 本插件行（含可选 config）
-├─ icon.svg              # 插件市场/管理器图标
-├─ locale/zh.json        # 包元信息文案（插件列表用）
-├─ locale/en.json
-├─ index.js              # 宿主半的别名入口（re-export lib/index.js，方便直接引用）
-├─ lib/
-│  ├─ index.js           # 宿主半：路由注册 + 增量缓存 + /live 采样（package main）
-│  ├─ pricing.js         # 纯函数：价目表、峰谷判定、costOfUsage、USD 换算
-│  └─ aggregate.js       # 纯函数：事件 → 会话小时桶 → 窗口汇总/日桶/模型桶/构成
-├─ client.js             # 浏览器半：__ModuleLoader__ 包装，React + 内联 SVG
-├─ README.md
-└─ tools/
-   ├─ selfcheck.mjs      # 纯核心冒烟：伪造事件 → token/成本/命中率断言
-   ├─ selfcheck-host.mjs # 假 ctx 跑 apply()，直接调用两条路由 handler
-   └─ selfcheck-client.mjs # 假 window/document/React 渲染页面，断言文案与数字
-```
-
-## 页面与交互
-
-| 区域 | 内容 |
-| --- | --- |
-| 时间档 | `近 24 小时`（24 个整点桶）/ `近 7 天` / `近 14 天` / `近 30 天`（按北京自然日对齐，含今天）。默认 `近 7 天`。 |
-| 币种 | `人民币 \| 美元`。人民币是权威口径，美元按 `usdRate`（默认 7.1）派生显示，切换不重新请求。 |
-| 总 Token 消耗 | 四个互斥桶相加（未缓存输入 + 输出 + 缓存读取 + 缓存写入），副行给输入/输出。 |
-| 预估成本 | **原厂官方价目**本地估算：DeepSeek 按峰/谷逐条计价，其它厂商平铺单价，海外厂商 USD 按 `usdRate` 折算。查不到官方价目的模型 `priceLevel:"unpriced"`、成本记 0，明细成本列显示「未计价」，表底灰字提示「N 个模型无官方定价，未计入金额（tokens x.xxM）」。 |
-| 会话数 | 窗口内至少有一条 usage 事件的会话数；副行给每会话平均 token。 |
-| 缓存命中率 | `缓存读取 / (未缓存输入 + 缓存读取 + 缓存写入)`，副行给缓存读取量。 |
-| DSH 运行状态 | 每 5 秒采样 CPU（进程 %、整机 %、核数）、RSS/堆、事件循环 p99/均值、运行时长、PID、Node 版本；底部是 60 点（5s × 60 = 300s）CPU 环形缓冲折线。 |
-| 每日消耗 | **按模型**分色堆叠的柱状图（同一天内按模型 token 占比分段），柱下方图例最多 6 个模型 +「其他」，右上角给窗口总量与成本。 |
-| Token 构成 | **按模型**分段的环形图，中心仍是总量 + `tokens` + 成本；图例每行 = 色块 + 模型名 + 占比% + tokens + 成本。 |
-| 分模型明细 | 第三张卡（整行）：色块 + 模型名（+ provider）+ 占比条 + tokens + 占比 + 成本，按 token 降序。 |
-
-## 数据口径
-
-宿主半只读 `ctx.sessionQuery`，**不写**任何会话数据。
-
-- 语料：`await ctx.sessionQuery.listSessions()` → `SessionRecord[]`（取 `header.id` / `header.createdAt`）。
-- 事件：`await ctx.sessionQuery.readSession(id)` → `{ session, inheritedEventCount, events }`。
-- 只处理 `event.type === "assistant/message"` 且带 `data.usage` 的事件；`assistant/attempt`、
-  非消息事件、空 usage、时间戳非法的事件一律安全跳过，绝不抛错。
-- `event.time` 是毫秒 epoch，按北京时区（UTC+8）归入小时桶/自然日桶。
-- `TokenUsage` 的四桶是互斥的：`inputTokens` 是**未缓存输入**，因此
-  `总 token = inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens`；
-  缓存命中率分母为 `inputTokens + cacheReadTokens + cacheWriteTokens`（为 0 时记 0）。
-- 模型/供应商来自 `data.message.source = { kind: "model", provider, model }`；
-  缺失时路由为 `unknown/unknown`（按 Flash 档估算）。
-- 每个小时桶都带 `models: Map<route, …>`，合并到日桶时模型也一起合并；响应里
-  `daily[i].models` 是该日各模型的 `{ route, label, color, vendor, priceLevel, tokens, costCNY, share }`，
-  同一日各模型 token 之和恒等于该日 `tokens`。
-- 模型颜色稳定：响应里的 `modelPalette`（10 色）按 **route 在窗口内首次出现的顺序**分配，
-  第 11 个及以后归入中性灰的「其他」切片；客户端不硬编码颜色，只读 `color` 字段。
-- 会话数 = 窗口内出现过 usage 事件的会话数；平均值 = 窗口总量 / 会话数。
-- 时间窗口按北京时区对齐：`近 7 天` 是「今天及之前 6 个自然日」，柱状图与汇总严格同源，
-  所以柱子之和恒等于卡片总量。
-
-### 缓存与增量
-
-- `overview` 响应缓存 `ttlMs`（默认 60s）。
-- 会话级缓存按 `ctx.sessionPersistence.list()` 的 `revision`（不透明变更令牌，
-  JSONL 后端由文件 size/mtime 派生）判断是否变化：**只有 revision 变了的会话才重新
-  `readSession`**，其余直接复用内存里的聚合结果。没有 persistence 后端时退化为
-  「每会话 60s TTL」。
-- 单次扫描并发上限 `sessionConcurrency`（默认 3），单会话读取超时 `readTimeoutMs`
-  （默认 10s），单会话失败只记日志、不影响其它会话。
-- 内存里只保留最近 31 天的按小时桶（最大窗口 30 天），旧桶自动裁剪。
-
-## 价格与峰谷
-
-**只认「模型原厂官方价目」**：DeepSeek→DeepSeek、GLM→智谱、Kimi→Moonshot、Grok→xAI、
-GPT→OpenAI、Claude→Anthropic、Qwen→阿里云、MiniMax→MiniMax、混元→腾讯、Step→阶跃、
-MiMo→小米、LongCat→美团。转售/聚合平台价（OpenCode Zen 等）与跨厂商兜底价**一律不用**。
-
-查不到官方价目的模型**不猜、不计钱**：响应里 `priced:false`、`costCNY:0`、
-`priceLevel:"unpriced"`、`priceKey:null`、`sourceUrl:null`；分模型明细的成本列显示
-「未计价」，表底灰字提示「N 个模型无官方定价，未计入金额（tokens x.xxM）」，`totals`
-里同时给出 `unpricedModels` / `unpricedTokens`。
-
-### 已核验的原厂价目（抓取日 2026-11-04，单位：百万 token）
-
-| 厂商 | 模型 | 币种 | 缓存命中 | 未命中输入 | 输出 | 来源 |
-| --- | --- | --- | --- | --- | --- | --- |
-| DeepSeek | `deepseek-flash`（峰 ×2） | CNY | 0.02 | 1 | 4 | [链接](https://api-docs.deepseek.com/zh-cn/quick_start/pricing) |
-| DeepSeek | `deepseek-v4-pro`（峰 ×2） | CNY | 0.15 | 4.5 | 13.5 | 同上 |
-| 智谱 | GLM-5.3 | CNY | 2 | 8 | 28 | [链接](https://docs.bigmodel.cn/cn/guide/start/pricing.md) |
-| 智谱 | GLM-5.3-Flash | CNY | 0.23 | 0.8 | 2.8 | 同上 |
-| 智谱 | GLM-5.3-FlashX | CNY | 0.57 | 2 | 7 | 同上 |
-| 智谱 | GLM-5.2 | CNY | 2 | 8 | 28 | 同上 |
-| 智谱 | GLM-5.1（<32K 档） | CNY | 1.3 | 6 | 24 | 同上 |
-| 阿里云 | Qwen3.8 Max（北京） | USD | 0.165 | 1.65 | 4.951 | [链接](https://www.alibabacloud.com/help/zh/model-studio/model-pricing) |
-| 阿里云 | Qwen3.8 Flash（北京） | USD | 0.0113 | 0.113 | 0.382 | 同上 |
-| 阿里云 | Qwen3.7 Plus（≤256K） | USD | 0.04 | 0.4 | 1.6 | 同上 |
-| MiniMax | MiniMax-M3（≤512K） | CNY | 0.42 | 2.1 | 8.4 | [链接](https://platform.minimax.cn/docs/pricing/overview.md) |
-| MiniMax | MiniMax-M3.1-Flash | CNY | 0.1 | 1 | 4 | 同上 |
-| 阶跃 | step-5-preview | CNY | 0.7 | 7 | 20 | [链接](https://platform.stepfun.com/docs/zh/guides/pricing/details.md) |
-| 小米 | MiMo-V2.6-Pro | CNY | 0.025 | 3 | 6 | [链接](https://mimo.mi.com/docs/zh-CN/price/pay-as-you-go) |
-| 小米 | MiMo-V2.6-Flash | CNY | 0.02 | 1 | 2 | 同上 |
-| 小米 | MiMo-V2.6-Pro-Ultraspeed | CNY | 0.25 | 30 | 60 | 同上 |
-| 美团 | LongCat-2.0 | CNY | 0.1 | 5 | 20 | [链接](https://longcat.chat/platform/docs/zh/pricing/long-cat-2.0) |
-| xAI | grok-4.7 / 4.6（<200K） | USD | 0.5 | 2 | 6 | [链接](https://docs.x.ai/developers/pricing) |
-| xAI | grok-4.5（<200K） | USD | 0.3 | 2 | 6 | 同上 |
-| xAI | grok-4.3（<200K） | USD | 0.2 | 1.25 | 2.5 | 同上 |
-| xAI | grok-build-0.1（<200K） | USD | 0.2 | 1 | 2 | 同上 |
-| OpenAI | gpt-6-luna / gpt-5.6-luna | USD | 0.01 / 0.02 | 0.1 / 0.2 | 0.5 / 1.2 | [链接](https://developers.openai.com/api/docs/pricing.md) |
-| OpenAI | gpt-6.1-sol / 6.1-terra / 6-sol / 5.6-sol / 5.6-terra | USD | 0.1 / 0.05 / 0.2 / 0.4 / 0.2 | 2 / 1 / 2 / 4 / 2 | 10 / 5 / 10 / 20 / 12 | 同上 |
-| OpenAI | gpt-5.1 / gpt-5 / gpt-5-mini / gpt-5.4-mini / 5.4-nano / gpt-4.1 / 4o-mini | USD | 0.125 / 0.125 / 0.025 / 0.075 / 0.02 / 0.5 / 0.075 | 1.25 / 1.25 / 0.25 / 0.75 / 0.2 / 2 / 0.15 | 10 / 10 / 2 / 4.5 / 1.25 / 8 / 0.6 | 同上 |
-| Anthropic | Claude Fable 5.1 / Opus 5.5 / Sonnet 5.5 | USD | 0.25 / 0.2 / 0.1 | 10 / 4 / 2 | 50 / 20 / 10 | [链接](https://platform.claude.com/docs/en/about-claude/pricing) |
-| Anthropic | Claude Haiku 5.5（≤100K） | USD | 0.01 | 0.1 | 0.5 | 同上 |
-| Moonshot | Kimi K3 | CNY | 2 | 20 | 100 | [链接](https://platform.kimi.com/docs/pricing/chat) |
-| Moonshot | Kimi K3.1 Pro | CNY | 1.3 | 13 | 68 | 同上 |
-| Moonshot | Kimi K3.1 Pro Highspeed | CNY | 1.3 | 26 | 136 | 同上 |
-| Moonshot | Kimi K2.7 Code | CNY | 1.3 | 6.5 | 27 | 同上 |
-| Moonshot | Kimi K2.7 Code Highspeed | CNY | 2.6 | 13 | 54 | 同上 |
-| Moonshot | Kimi K2.6 | CNY | 1.1 | 6.5 | 27 | 同上 |
-| 腾讯混元 | Hy3（TokenHub） | CNY | 0.25 | 1 | 4 | [链接](https://cloud.tencent.com/document/product/1759/127342) |
-| 腾讯混元 | Hy4 preview（TokenHub） | CNY | 0.3 | 6 | 18 | 同上 |
-| Google | Gemini 4 Argon（优惠期，~2026-11-30） | USD | 0.1 | 2 | 10 | [链接](https://ai.google.dev/gemini-api/docs/latest-model) |
-| Google | Gemini 4 Argon（正式价，2026-12-01 起） | USD | 0.2 | 4 | 20 | 同上 |
-| Meta | Muse Spark 1.3 Contributor | USD | 0.15 | 1.25 | 4.25 | 官方 Muse 定价页（运营方提供） |
-| Meta | Muse Wonder | USD | 0.2 | 4 | 20 | 同上 |
-
-> 只取**短上下文/标准档**：OpenAI 的 ≥272K 长上下文档、xAI 的 ≥200K 档、阿里云的非北京
-> 地域价、Anthropic 的 >100K 档都未实现（注释在 `lib/pricing.js` 表项里说明）。
-> 阿里云中国站 CNY 价目为 JS 渲染未能完整核验，故用其官方国际站 USD 价目（同一模型），
-> 按 `usdRate` 折算展示；人民币仍是权威口径。
->
-> Kimi 的 `cacheWrite` 取官方 **5 分钟 TTL** 写入价；统计不区分缓存 TTL，1 小时档未建模。
-> Kimi 别名按同代官方按量价折算：`k3` / `k3-256k` → Kimi K3，`kimi-for-coding` → K2.7 Code，
-> `kimi-for-coding-highspeed` → K2.7 Code Highspeed；用户实际可能走 Kimi Code 订阅套餐。
-> Gemini 4 Argon 按**事件时间**取价：2026-11-30（含）前用优惠价，2026-12-01 00:00（北京）起用正式价。
-> 腾讯混元用 TokenHub 刊例价（批量推理 5 折与开源权重本地部署免费价不采用）。
-
-### 未计价（`priceLevel: "unpriced"`，成本记 0）
-
-- **Reflection Beam / Iceman**：无公开按量计费价目。
-- **Meta Muse Spark 1.2**：官方价目未列该版本（1.3 已入表）。
-- **小米 MiMo V2.5 / V2.5-Pro**：官方页标注 2026-10-21 已下线。
-- **LongCat 2.5 Preview Free**：官方定价页只列 LongCat-2.0。
-- 以及任何未列在官方价目表里的模型 id（如 `claude-opus-4.1`、`kimi-k2.7-codex`）。
-
-### 峰谷与汇率
-
-- 峰时：**北京时间工作日 09:00–12:00、14:00–18:00**（左闭右开）；其余时刻、周末、
-  `holidays` 列出的日期按谷价。峰谷 ×2 **只作用于 DeepSeek**，其它厂商官方页是平铺单价。
-- 缓存写入有独立单价时用独立单价（OpenAI 30m / Anthropic 5m 档），没有时按「未命中输入」价。
-- 人民币是权威金额；美元 = 人民币 / `usdRate`（默认 7.1）。中国厂商 CNY 价目不做折算，
-  海外厂商 USD 价目按 `usdRate` 折算成 CNY 展示。
-
-> 价格是**本地估算**，只用于看板展示，不是账单；调价后改 `lib/pricing.js` 的
-> `OFFICIAL_PRICE_TABLE`（`PRICE_TABLE_VERSION` 会出现在响应里便于排查）。
-> 已核验数字都带 `sourceUrl` + `verifiedAt: "2026-11-04"`。
-
-## 页面（2.0：行情终端）
-
-整个面板改成 A 股行情终端风：顶栏（时间档 · 币种 · **柱状/K线**切换）→ 指数条（总消耗/预估成本/会话数/缓存命中率/官方搜索，各带涨跌徽标与迷你 K）→ 品种头（现价、涨跌、今开/最高/最低/均价/振幅）→ 主图（MA5/10/20 + 分模型堆叠成交量 + 十字光标 + OHLC 浮窗）→ 自选行情（模型当个股，代码 `MDL-01…`）｜成交流水（chat 红绿点、search 金点）→ 持仓明细 → 状态栏。
-
-- **柱状 / K线** 只切换主图渲染，数据同一份 `terminal.candles`：柱=该根 `tokens` 按模型堆叠，K线=OHLC 蜡烛。默认「柱状」，选择存 `localStorage: dsh-session-stats:chart`；切换不重新请求。
-- 蜡烛价格 = 采样桶 token 速率（tokens/分钟，可切 ¥/分钟）；成交量 = 该时段调用次数；涨跌基准 = 窗口第一根 K 的 O；空桶前值结转（o=h=l=c=上一根 c，`vol=0`，柱状用极淡斜纹表示）。
-- 周期：24h→5m（288 根）、7d→1h（168）、14d→2h（168）、30d→1d（30）；采样桶 ≤ 周期/4（1m / 15m / 15m / 1h）。
-- A 股配色：红涨绿跌（深色 up `#FF4D4F` / down `#00C08B`，浅色 up `#DD3538` / down `#0B9D6E`），涨=实心+▲、跌=空心+▼、平=灰。
-- 数据全部塞在 `terminal` 命名空间（`terminal.indices/symbols/candles/tape`），原有 `totals/models/daily/composition/costComposition` 不变。
-
-## 官方搜索（server-tool-search）
-
-DSH 的联网搜索走 `dsh-web-search-deepseek`，**每次搜索是一次独立 API 调用**，并在会话日志里留下一条
-`web/deepseek-search-llm-request` 事件。计费单位是**这条事件**（每个 query 一次请求），不是
-`tool/call` 里的 `web_search`（实测同会话 85 条搜索请求事件 vs 30 条 tool/call，数错会少算）。
-
-- 官方价目：**Search 每 1,000 次成功请求 ¥5**，即 **¥0.005 / 次**，平铺（不参与峰谷、不做汇率折算）。
-  来源：<https://api-docs.deepseek.com/zh-cn/quick_start/pricing>（抓取日 2026-11-05）。
-- **Fetch 不统计**：DSH 的 `web_fetch` 是本地直连，不走 DeepSeek Fetch API，不产生费用。
-- 搜索调用自身的 token（那次 `deepseek-v4-flash` 的 messages 调用）**日志里没有 usage**，本地无法还原
-  token 费用，只能统计「按次费用」；因此看板金额与平台账单可能不完全一致，UI 已如实标注。
-
-响应字段：
-
-- `totals.searches` / `totals.searchCostCNY`；`totals.costCNYTotal = totals.costCNY + totals.searchCostCNY`
-  （`costCNY` 仍是纯 token 成本，`costCNYWithSearch` 与 `costCNYTotal` 同值）。
-- `daily[].searches` / `daily[].searchCostCNY`。
-- `models[]` 末尾追加合成行（有搜索时才出现）：
-  `{ route: "official/server-tool-search", label: "官方搜索", vendor: "deepseek", priceLevel: "official",
-     tokens: 0, costsOnly: true, searches: N, costCNY, shareByCost }`。它**不会**进入环形图/堆叠柱
-  （0 token 会让占比失真），只出现在「分模型明细」表与成本卡副行。
-- `pricing.search = { unit: "per-request", priceCNY: 0.005, note: "¥5 / 1000 次成功请求" }`。
-
-### 成本构成（第三张环形图）
-
-「每日消耗 / Token 构成 / 成本构成」三张卡在桌面端等宽三列（<1100px 两列、<720px 一列）。
-成本环形的口径：
-
-- 切片来自 `costComposition`：`{ key, route, label, vendor, color, costCNY, share }`，按 `costCNY` 降序。
-- `share = costCNY / totals.costCNYTotal`（**含官方搜索费**），所以环形占比与成本卡主数字一致。
-- 颜色复用 `models[].color`（与 token 环形图同一模型同一颜色）；`official/server-tool-search`
-  用中性灰 `otherModelColor`。
-- **未计价模型成本为 0，不进入成本环形**（否则会出现 0 占比的空切片）；它们仍在「分模型明细」里以
-  「未计价」展示。0 成本/空数据时环形只画轨道、中心显示 `—`。
-- `composition`（token 四桶）字段保持不变，向后兼容。
-
-## 配置项（`cordis.patch.yml` 的 `config`，全部可选）
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
-| `usdRate` | `7.1` | 显示用 CNY→USD 汇率（>0）。 |
-| `ttlMs` | `60000` | `overview` 响应缓存毫秒数；`0` 表示每次请求都重算（会话级增量仍生效）。 |
-| `window` | `"7d"` | 默认时间档：`24h` / `7d` / `14d` / `30d`。 |
-| `liveIntervalMs` | `5000` | `/live` 的 CPU 采样间隔（1000–60000）。 |
-| `livePoints` | `60` | CPU 环形缓冲点数（6–600）；默认 5s×60 = 5 分钟。 |
-| `sessionConcurrency` | `3` | 扫描时并发 `readSession` 数（1–16）。 |
-| `readTimeoutMs` | `10000` | 单会话读取超时。 |
-| `maxSessions` | `5000` | 单次响应最多折叠的会话数。 |
-| `allowedHosts` | `[]` | 额外放行的 Host（精确匹配）。反代/自定义域名填这里。 |
-| `allowPrivateHosts` | `false` | 信任私有网段 Host（`192.168/10/172.16/169.254`、`*.local`、单标签主机名）。用手机或另一台机器通过局域网 IP 打开时需要打开；**公网域名始终拒绝**。 |
-| `timeZone` | `"Asia/Shanghai"` | 自然日/小时桶使用的 IANA 时区。非中国用户改成自己的区，否则「近 7 天」日界与 K 线横轴按北京时间切。**DeepSeek 峰谷时段是官方按北京时间定义的，不随此项变化。** |
-| `holidays` | 内置 2026 表 | 按谷价计费的北京日期。**默认已内置 2026 年中国法定节假日 33 天**（依据 [国办发明电〔2025〕7号](https://www.gov.cn/zhengce/content/202511/content_7047090.htm)）。传 `[]` 表示显式清空。 |
-| `makeupWorkdays` | 内置 2026 表 | 调休上班的周末（按**工作日**算峰价）。默认内置 2026 年 6 天：`2026-01-04`、`02-14`、`02-28`、`05-09`、`09-20`、`10-10`。 |
-| `debug` | `false` | 打开后输出扫描明细日志。 |
+| `window` | `"7d"` | 打开时的默认时间档：`24h` / `7d` / `14d` / `30d` |
+| `usdRate` | `7.1` | 人民币换美元的显示汇率，只影响美元显示 |
+| `timeZone` | `"Asia/Shanghai"` | 按哪个时区切天和小时，不在中国就改成自己的区 |
+| `ttlMs` | `60000` | overview 响应缓存；`0` 表示每次请求都重算（会话级增量缓存还生效） |
+| `sessionConcurrency` | `3` | 一次扫描同时读几个会话（1–16） |
+| `readTimeoutMs` | `10000` | 单个会话读多久算超时，超时就跳过它、记条日志 |
+| `liveIntervalMs` | `5000` | `/live` 多久采一次 CPU（1000–60000） |
+| `livePoints` | `60` | CPU 曲线留多少个点（6–600），默认 5 秒 × 60 = 5 分钟 |
+| `allowedHosts` | `[]` | 额外放行的 Host，反代域名写这里 |
+| `allowPrivateHosts` | `false` | 放行私有网段、`*.local`、单标签主机名 |
+| `holidays` | 内置 2026 表 | 按谷价算的北京日期，传 `[]` 是显式清空 |
+| `makeupWorkdays` | 内置 2026 表 | 调休上班的周末，按工作日算峰价 |
+| `debug` | `false` | 打开后打扫描明细日志 |
 
-### 峰谷价的节假日口径
+> **loader id 不要改，固定是 `session-stats-panel`。** 官方的 `@deepseek-ai/dsh-session-stats` 用的是 `session-stats`，加载器按 id 建表、后加载的覆盖先加载的。撞了 id，官方的 `sessionStats` 投影就静默不挂载，界面上看不出来，只是流式输出的计时数据没了。
 
-DeepSeek 只对**工作日**的 09:00–12:00 / 14:00–18:00 收峰价，其余时段（含周末、法定节假日）为谷价。
-这里有两个只用「周末判断」会算错的地方，插件都已处理：
+价格怎么算、峰谷怎么判，写在 [docs/PRICING.md](docs/PRICING.md)。接口和字段在 [docs/API.md](docs/API.md)。
 
-| 情况 | 举例 | 正确处理 |
-|---|---|---|
-| 长假中间的**工作日** | 2026-02-16（周一，春节假期内） | 按假期 → **谷价**（若当工作日会虚高 100%） |
-| **调休上班的周末** | 2026-02-14（周六，春节调休） | 按工作日 → **峰价**（若当周末会少算 50%） |
+## 页面速览
 
-峰谷时段本身是官方按**北京时间**定义的，所以它不跟随 `timeZone` 变化；`timeZone` 只影响「日/小时桶怎么切」。
+| 区域 | 内容 |
+| --- | --- |
+| 顶栏 | 时间档（24h / 7d / 14d / 30d）和币种（人民币 / 美元） |
+| 指标卡 | 总 token、预估成本、会话数、缓存命中率，每张下面一行副信息 |
+| 今日概览 | 今天的四个数跟昨天比，带 ▲ / ▼ / `—` |
+| 运行状态 | CPU（进程、整机、核数）、内存、卡不卡（事件循环延迟）、运行了多久、PID 和 Node 版本，底部一条 5 分钟 CPU 曲线 |
+| 每日消耗 | 按模型分色的日堆叠柱；开了预测会多一条虚到月底的线 |
+| 构成环图 | token 四桶的构成，加上按模型的成本占比，中间是总量和金额 |
+| 分模型明细 | 色块、模型名（带 provider）、占比条、token、占比、成本，按 token 从多到少排 |
+| 热力日历 | 最近 8 周的活跃度，token 和会话数两种模式 |
+| 排行 | 工具、命令、技能各取前十，条形长度按最高值缩放 |
+| 会话列表 | 最多 50 张会话卡，能搜索、能排序，子会话默认藏起来 |
 
-## HTTP API（仅本机）
+窄屏：桌面端三张图表卡并排，`<1100px` 变两列，`<720px` 变一列。卡片和热力、排行、列表都不横向溢出。
 
-两条 `exact` 路由都由宿主半注册，`Cache-Control: no-store`。
+## 数据与隐私
 
-`Host` 校验默认只放行回环地址（`127.0.0.1` / `localhost` / `[::1]`），其余一律 `403`，
-而且 403 的响应体会直接告诉你该开哪个开关。放宽有两种方式：
-
-- `allowPrivateHosts: true` —— 放行私有网段 / `*.local` / 单标签主机名。适合「用手机或另一台
-  电脑通过局域网 IP 打开 WebUI」。公网域名仍然拒绝。
-- `allowedHosts: ["stats.example.com"]` —— 精确放行某个反向代理域名。
-
-> 默认从严是刻意的：这两条接口会读出本机**全部会话日志**。若对任意 Host 开放，
-> 一个 DNS rebinding 页面就能把内容读走。
-
-### `GET /session-stats/api/overview?window=24h|7d|14d|30d`
-
-```jsonc
-{
-  "ok": true,
-  "generatedAt": 1793718000000,
-  "window": { "key": "7d", "granularity": "day", "bucketCount": 7, "from": 0, "to": 0,
-              "label": "近 7 天", "points": ["10/28", "...", "11/3"] },
-  "currency": { "code": "CNY", "symbol": "¥", "usdRate": 7.1, "usdSymbol": "$" },
-  "totals": { "tokens": 764900000, "input": 3380000, "output": 3410000,
-              "cacheRead": 758100000, "cacheWrite": 0,
-              "costCNY": 47.48, "costUSD": 6.69,
-              "cacheHitRate": 0.99556, "sessions": 22, "avgTokensPerSession": 34768182,
-              "pricedTokens": 714900000, "unpricedTokens": 50000000, "priced": false,
-              "unpricedModels": 1, "searches": 3, "searchCostCNY": 0.015,
-              "costCNYTotal": 51.815, "costCNYWithSearch": 51.815, "events": 1234 },
-  "pricing": { "tableVersion": "vendor-official-2026-11", "peakMultiplier": 2,
-               "peakEvents": 10, "offPeakEvents": 4, "mode": "mixed", "holidays": [],
-               "usdRate": 7.1,
-               "officialLists": ["vendor-official"],
-               "priceLevels": { "official": 2, "unpriced": 1 } },
-  "modelPalette": ["#12b886", "#4dabf7", "#9775fa", "#ff922b", "#22b8cf",
-                   "#f06595", "#fcc419", "#5c7cfa", "#b08968", "#adb5bd"],
-  "otherModelColor": "#868e96",
-  "composition": [ { "key": "cacheRead", "tokens": 758100000, "share": 0.991111 }, "..." ],
-  "daily": [ { "key": "1", "label": "10/28", "start": 0, "end": 0, "input": 0,
-               "output": 0, "cacheRead": 0, "cacheWrite": 0, "tokens": 0,
-               "costCNY": 0, "costUSD": 0, "events": 0,
-               "models": [ { "route": "deepseek/deepseek-v4.1-flash",
-                             "label": "deepseek-v4.1-flash", "color": "#12b886",
-                             "tokens": 0, "costCNY": 0, "costUSD": 0,
-                             "vendor": "deepseek", "priceLevel": "official",
-                              "share": 0 } ] } ],
-  "models": [ { "provider": "deepseek", "model": "deepseek-v4.1-flash",
-                "route": "deepseek/deepseek-v4.1-flash",
-                "label": "deepseek-v4.1-flash", "color": "#12b886",
-                "tokens": 0, "costCNY": 0, "costUSD": 0, "share": 0,
-                "events": 0, "priced": true, "vendor": "deepseek",
-                 "priceLevel": "official", "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
-                "priceKey": "deepseek-flash" } ],
-  "scan": { "sessionsScanned": 22, "sessionsTotal": 22, "readCount": 22, "cachedCount": 0 }
-}
-```
-
-### `GET /session-stats/api/live`
-
-同步返回、无 I/O（本机实测 < 1 ms，远低于 50 ms 预算）：
-
-```jsonc
-{
-  "ok": true, "sampledAt": 0, "intervalMs": 5000, "points": 60, "windowSec": 300,
-  "cpu": { "single": 0.0, "machine": 0.0, "cores": 11 },
-  "memory": { "rssMB": 619, "heapUsedMB": 190, "heapTotalMB": 240,
-              "externalMB": 6, "arrayBuffersMB": 2 },
-  "eventLoop": { "p99ms": 121.2, "meanMs": 25.5, "resolutionMs": 10 },
-  "uptimeSec": 1740, "uptimeText": "29m", "pid": 2866, "node": "v24.21.0",
-  "platform": "win32",
-  "history": { "values": [0, 0.1], "peak": 0.1, "windowSec": 300, "intervalMs": 5000 }
-}
-```
-
-- CPU：`process.cpuUsage()` 差分 / 经过时间；`single` 是单核百分比，`machine = single / cores`。
-- 内存：`process.memoryUsage()`（RSS / heapUsed / heapTotal / external）。
-- 事件循环：`perf_hooks.monitorEventLoopDelay({ resolution: 10 })` 的 p99 与 mean，
-  每次读取后 reset，因此反映「上次轮询以来」的延迟。
-- 运行时长：`process.uptime()`，格式化为 `42s` / `29m` / `3h 05m` / `2d 4h`。
-- `history`：宿主启动后每 `liveIntervalMs` 采一点的环形缓冲（默认 60 点 = 5 分钟）。
+- **只读**。只调 `ctx.sessionQuery.listSessions()` 和 `readSession()`。事件上只读 usage、`tool/call`、`turn/start`、`step/start`、`user/message`、`session/title` 这些，不写回任何东西。日志坏了、读超时、时间戳不对，就跳过那个会话，不影响别的。
+- **不上传，不联网**。没有遥测，没有远程请求。价目表是打包进去的快照，不会自己去拉。
+- **只对本机开放**。默认只认 `127.0.0.1` / `localhost` / `[::1]`，别的 Host 一律 403，响应里会直接告诉你该开哪个开关。每条响应都带 `Cache-Control: no-store`。
+- **增量读**。每个会话有一个表示「有没有改动过」的标记（revision），由持久化后端（persistence）提供；只有变了的会话才重新读，没变的直接用内存里的结果。没有 persistence 后端时退化成每个会话按 `ttlMs` 过期。内存里只留最近 31 天、每小时一格的数据。
+- **fork 去重**。从已有会话复制出来的会话（`isSeeded`），开头那段事件是父会话的复制品，`readSession()` 的 `inheritedEventCount` 就是这段有多长。算之前会切掉，只算这个会话自己新增的部分。这段在本机约占 token 总量的 7.8%，旧版是重复算的，3.0 起改过来了。
+- **金额是估的**。按各家官网的价目一条条算。DeepSeek 分峰谷，别的厂商是平铺价。美元价目按 `usdRate` 折成人民币展示。查不到官方价的模型标「未计价」，成本记 0，不猜。
+- **官方搜索按次算**。每次联网搜索是一笔独立请求，¥0.005 一次，单独加在成本卡副行。搜索自己那次调用的 token 日志里没有 usage，本地还原不出来。
 
 ## 开发与自检
 
-```powershell
-cd "<插件目录>"
+零依赖。`npm install` 只在要装宿主对等依赖时才需要。自检不联网、不起 DSH、不写用户数据。
 
+```powershell
 # 语法检查
 node --check index.js
 node --check lib\index.js
@@ -394,38 +188,87 @@ node --check lib\pricing.js
 node --check lib\aggregate.js
 node --check client.js
 
-# 纯核心：伪造事件 → token / 成本 / 命中率 / 日桶 / 模型占比断言
+# 三套自检：核心 / 宿主 / 客户端
 node tools\selfcheck.mjs
-
-# 宿主半：假 ctx 跑 apply()，直接调用两条路由 handler（不监听端口）
 node tools\selfcheck-host.mjs
-
-# 浏览器半：假 window/document/React 渲染页面，断言截图里的数字与文案
 node tools\selfcheck-client.mjs
+
+# 或者一次跑完
+npm run selfcheck
 ```
 
-三个 selfcheck 都不需要 DSH 运行、不联网、不写用户数据。
+- `tools/selfcheck.mjs`：拿假事件算 token、成本、命中率、每天的量、模型占比，还有热力、排行、会话列表这几张新卡要的数据
+- `tools/selfcheck-host.mjs`：拿假 ctx 跑 `apply()`，直接调接口处理函数（不监听端口），检查返回结构、请求来源（Host）和请求方法的限制、缓存、预热定时器
+- `tools/selfcheck-client.mjs`：拿假的 `window` / `document` / React 渲染一遍，检查文案、数字、热力格数、排行宽度、搜索和排序、空状态
 
-## CPU 指标为什么会出现 120% / 165%
+改完怎么生效：
 
-`CPU（进程）` 是 **进程累计 CPU 时间 ÷ 墙钟时间**：
+| 改了什么 | 怎么生效 |
+| --- | --- |
+| `lib/*.js`（宿主） | 重启 DSH，再强刷浏览器 |
+| `client.js`、`locale/*.json`（浏览器） | 刷新页面就行，客户端插件会自动热更新（HMR） |
+| `cordis.patch.yml`（配置 / 挂载） | 重启 DSH |
 
-- Node 进程是单线程模型，但 V8 的后台编译/并发标记 GC、libuv 线程池、zstd 解压等都可能在别的线程上跑；
-- 因此一个进程可以同时占用 **超过 1 个 CPU 核**，读数就会大于 100%（120.8% ≈ 1.21 核）；
-- 面板同时给出 **整机占比 = 进程 CPU ÷ 核数**（例如 120.8% / 24 核 ≈ 5.0%），这才是“整台机器用了多少”；
-- 旁边的「最近 5 分钟 CPU」与「峰值 x%」使用同一口径（核当量），不是错误。
+## 目录结构
 
-> 旧版本曾把这一项标注为「CPU（单核）120.8% 单核」，容易被误读成“单核跑到 120%”；1.1.1 起改为「CPU（进程）120.8% · 1.21 核」，并在悬浮提示里说明。
+```text
+dsh-session-stats-panel/
+├─ package.json          # name / type: module / main: lib/index.js / dsh.bundle.patch / dsh.client
+├─ cordis.patch.yml       # bundle patch：insert 本插件行（含可选 config）
+├─ icon.svg               # 插件管理器 / 市场图标
+├─ locale/{zh,en}.json    # 包元信息文案（插件列表用）
+├─ index.js               # 宿主半的别名入口（re-export lib/index.js）
+├─ lib/
+│  ├─ index.js            # 宿主半：路由、增量扫描缓存、/live 采样（package main）
+│  ├─ pricing.js          # 纯函数：价目表、峰谷判断、costOfUsage、美元换算
+│  └─ aggregate.js        # 纯函数：事件 → 小时桶 → 窗口汇总 / 日桶 / 模型桶 / 热力 / 排行 / 会话列表
+├─ client.js              # 浏览器半：__ModuleLoader__ 包装，React + 内联 SVG
+├─ docs/
+│  ├─ API.md              # 接口和响应字段
+│  ├─ PRICING.md          # 价目快照、峰谷规则、未计价清单
+│  └─ screenshots/        # README 用的截图
+├─ tools/
+│  ├─ selfcheck.mjs       # 核心自检
+│  ├─ selfcheck-host.mjs  # 宿主路由自检
+│  └─ selfcheck-client.mjs# 客户端渲染自检
+├─ README.md / README_en.md
+└─ LICENSE
+```
 
-## 已知限制
+## 常见问题
 
-- 只统计 `assistant/message` 上报告的 usage；不估算没有 usage 的调用。
-- 价格表是内置的**原厂官方价目**快照，不自动拉取；跨币种只做汇率派生。查不到官方价目
-  的模型一律 `unpriced`（成本 0、成本列显示「未计价」），不猜、不用平台价或别家价顶替。
-- 会话数据来自本机 `sessionQuery`；如果某会话日志损坏或读取超时，该会话会被跳过
-  （日志里可见 warn），其余会话照常统计。
-- `overview` 在缓存 TTL 内可能滞后最多 `ttlMs`；需要更实时可把 `ttlMs` 调小。
+**打开面板时指标卡先出来，热力和排行要等一下？**
+对，这是分块加载。指标和图表走 `/overview`，先渲染；热力、排行、会话列表走 `/heavy`，另一个请求。切时间档时旧数据不会消失，顶上会出现一条 2px 的进度条。
 
-## 许可
+**改了代码没反应？**
+宿主（`lib/*.js`）要重启 DSH，再强刷浏览器。浏览器那边（`client.js`、`locale/*.json`）刷新页面就够，客户端插件会自动热更新。
 
-MIT © 2026 织风裁月 (Oblivionis7999)。价目表为各厂商官方公布价目的快照，仅用于本地估算，不构成账单。
+**CPU 怎么显示 120%？**
+这个数按「进程花掉的 CPU 时间 ÷ 实际过了多久」算。V8 的后台编译、垃圾回收、读文件解压这些会在别的线程上跑，所以一个进程能超过 100%。120.8% 就是 1.21 个核。旁边的整机占比才是这台机器用了多少。
+
+**为什么有的模型显示「未计价」？**
+只认各家官网的按量价目。查不到的（下线的版本、没有公开价的模型）不估，成本记 0，明细里写「未计价」，表底会告诉你几个模型没算进去。
+
+**面板的钱和账单对不上？**
+两个原因。一是只算日志里带 usage 的 `assistant/message`，没 usage 的调用不估。二是联网搜索按次数算钱，搜索自己那次调用的 token 日志里没有。面板是估的，不是账单。
+
+**手机或者别的电脑打不开？**
+默认只认本机。局域网访问把 `allowPrivateHosts` 打开；反代域名写进 `allowedHosts`。公网域名一直拒。
+
+**「近 7 天」的日界不是我这边的时间？**
+`timeZone` 默认 `Asia/Shanghai`，改成自己的区。DeepSeek 的峰谷时段是官方按北京时间定的，不跟这个走。
+
+**会和官方的 `@deepseek-ai/dsh-session-stats` 打架吗？**
+不会。这个插件的 loader id 是 `session-stats-panel`，官方是 `session-stats`，两个能一起挂。
+
+## 致谢
+
+- [DeepSeek Harness](https://github.com/deepseek-ai)：插件宿主，插件、ModuleLoader、侧栏插槽都是它提供的
+- README 的排版参考了 [dsh-ssh-tunnel](https://github.com/OMSociety/dsh-ssh-tunnel) 和 [dsh-github-workbench](https://github.com/meyaomiao/dsh-github-workbench)
+- 价目来自各家厂商官网，抓取日期和链接都记在 [docs/PRICING.md](docs/PRICING.md)
+
+用着顺手点个 Star ⭐。有问题去 [Issues](https://github.com/Oblivionis7999/dsh-session-stats-panel/issues) 提，每个版本的改动在 [Releases](https://github.com/Oblivionis7999/dsh-session-stats-panel/releases)。
+
+## 许可证
+
+[MIT](LICENSE) © 2026 织风裁月 (Oblivionis7999)。价目表是各厂商官网价格的快照，只用来本地估算，不是账单。

@@ -1,7 +1,7 @@
 {
   "name": "dsh-session-stats-panel",
-  "version": "2.2.2",
-  "description": "DSH Web 左侧栏「会话统计」页面：Token 与成本估算、DSH 运行状态实时采样、每日消耗堆叠柱与 Token 构成环形图。零第三方依赖，图表全部内联 SVG。",
+  "version": "3.1.0",
+  "description": "DSH Web 左侧栏「肥鱼用量分析」页面：Token 与成本估算、活跃度热力日历、工具/命令/技能排行、分会话列表，以及 DSH 运行状态实时采样。零第三方依赖，图表全部内联 SVG。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -29,7 +29,10 @@
     "locale",
     "icon.svg",
     "README.md",
-    "tools",
+    "README_en.md",
+    "tools/selfcheck.mjs",
+    "tools/selfcheck-host.mjs",
+    "tools/selfcheck-client.mjs",
     "docs",
     "LICENSE"
   ],

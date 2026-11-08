@@ -11,3 +11,4 @@ Thumbs.db
 .publish.log
 *.bak-*
 _real*.json
+_notes/

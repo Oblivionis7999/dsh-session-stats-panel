@@ -11,8 +11,10 @@
 
 export {
   DEFAULTS,
+  HEAVY_PATH,
   LIVE_PATH,
   OVERVIEW_PATH,
+  WARMUP_DELAY_MS,
   apply,
   createLiveSampler,
   formatUptime,

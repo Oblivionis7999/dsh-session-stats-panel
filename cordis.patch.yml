@@ -2,8 +2,9 @@
 # dsh-session-stats-panel —— DSH bundle patch
 # ============================================================================
 # 这是插件的“挂载声明”。DSH 启动时按 bundle 层栈叠加各插件 patch，
-# 本文件把「会话统计」宿主半（两条 /session-stats/api/* 路由）与浏览器半
-# （侧栏页面 + 图标）插入 Web profile 的配置树。
+# 本文件把「肥鱼用量分析」宿主半（overview / heavy / live 三条
+# /session-stats/api/* 路由）与浏览器半（侧栏页面 + 像素蓝鲸图标）
+# 插入 Web profile 的配置树。
 #
 # 安装方式（本地开发，不复制、不手改 profile patch）：
 #   dsh plugin --profile web add "link:<本包目录的绝对路径>"

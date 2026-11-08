@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Session stats",
-    "description": "Session statistics page in the sidebar: token and cost estimates, live DSH runtime sampling, daily consumption stacked bars, and the token composition donut."
+    "title": "Fat Fish Usage",
+    "description": "Usage analysis page in the sidebar: token and cost estimates, live DSH runtime sampling, daily consumption and cost composition, an activity calendar, tool / command / skill leaderboards, and the session list."
   }
 }

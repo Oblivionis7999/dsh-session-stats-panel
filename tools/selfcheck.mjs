@@ -26,15 +26,33 @@ import {
   searchCost,
 } from "../lib/pricing.js";
 import {
-  CANDLE_SPECS,
+  DAY_MS,
   DEFAULT_USD_RATE,
+  HEATMAP_DAYS,
+  LEADERBOARD_LIMIT,
+  MAX_BUCKET_AGE_MS,
+  MAX_DAILY_AGE_MS,
+  MAX_TOOL_DURATION_MS,
   MODEL_PALETTE,
   OTHER_MODEL_COLOR,
+  PROMPT_PREVIEW_CHARS,
+  SESSION_TITLE_FROM_PROMPT_CHARS,
+  UNTITLED_TITLE,
+  buildCommandLeaderboard,
+  buildHeatmap,
   buildOverview,
+  buildSessionList,
+  buildSkillLeaderboard,
+  buildToolLeaderboard,
+  commandProgramOf,
+  computeForecast,
   dayIndexOf,
+  hourIndexOf,
+  pruneSessionAggregate,
   resolveWindow,
-  zoneOffsetMs,
   summarizeSessionEvents,
+  windowBucketIndexOf,
+  zoneOffsetMs,
 } from "../lib/aggregate.js";
 import { formatUptime, normalizeConfig } from "../lib/index.js";
 
@@ -470,52 +488,55 @@ check(
 );
 
 check(
-  "terminal: candles OHLC, empty-bar carry, symbols/indices/tape",
+  "K-line removed: overview carries no terminal/candles/indices/symbols/tape",
   () => {
-    const terminal = overview.terminal;
-    assert.ok(terminal !== null && typeof terminal === "object");
-    const candles = terminal.candles;
-    const spec = CANDLE_SPECS[overview.window.key];
-    assert.equal(candles.period, spec.period);
-    assert.equal(candles.bars.length, spec.bars);
-    for (const bar of candles.bars) {
-      assert.ok(bar.h >= Math.max(bar.o, bar.c) - 1e-9, "high >= max(open, close)");
-      assert.ok(bar.l <= Math.min(bar.o, bar.c) + 1e-9, "low <= min(open, close)");
-      if (bar.empty) {
-        assert.equal(bar.vol, 0);
-        assert.equal(bar.tokens, 0);
-      }
+    assert.equal(Object.hasOwn(overview, "terminal"), false, "overview.terminal must be gone");
+    assert.equal(overview.terminal, undefined);
+    // Reverse guard: the deleted sub-payloads must not reappear under another name.
+    const serialized = JSON.stringify(overview);
+    for (const key of ["candles", "indices", "symbols", "tape"]) {
+      assert.equal(serialized.includes(`"${key}"`), false, `${key} must not appear in the payload`);
     }
-    // An empty bar carries the previous close forward.
-    for (let index = 1; index < candles.bars.length; index += 1) {
-      const bar = candles.bars[index];
-      if (!bar.empty) continue;
-      assert.equal(bar.o, candles.bars[index - 1].c);
-      assert.equal(bar.c, candles.bars[index - 1].c);
-    }
-    // Symbols mirror models numbers and never invent prices.
-    for (const symbol of terminal.symbols) {
-      const model = overview.models.find((entry) => entry.route === symbol.route);
-      assert.ok(model !== undefined, `symbol ${symbol.route} must come from models[]`);
-      assert.equal(symbol.tokens, model.tokens);
-      assert.equal(symbol.costCNY, model.costCNY);
-      assert.equal(symbol.unpriced, model.priceLevel === "unpriced");
-      assert.ok(symbol.code.startsWith("MDL-"));
-    }
-    // Five indices, change compared with the previous equal-length window.
-    assert.deepEqual(terminal.indices.map((item) => item.key), ["tokens", "cost", "sessions", "cacheHit", "search"]);
-    for (const item of terminal.indices) {
-      assert.equal(item.spark.length, 12);
-      assert.ok(item.chgPct === null || Number.isFinite(item.chgPct));
-    }
-    // Tape: newest first, at most 20, search entries marked.
-    assert.ok(terminal.tape.length <= 20);
-    for (let index = 1; index < terminal.tape.length; index += 1) {
-      assert.ok(terminal.tape[index - 1].t >= terminal.tape[index].t, "tape is descending");
-    }
-    assert.ok(terminal.tape.some((entry) => entry.kind === "search"));
   },
-  "288/168/30 bars · carry · 5 indices · tape desc",
+  "no terminal · no candle/tape keys",
+);
+
+check(
+  "K-line removed: session aggregate keeps hourly buckets only",
+  () => {
+    const shape = summarizeSessionEvents("session-shape", events, { pricing, now: NOW });
+    // Exact key set: re-adding minutes/quarters/tape (or another K-line bucket) fails.
+    assert.deepEqual(Object.keys(shape).sort(), [
+      "cacheRead",
+      "cacheWrite",
+      "commandDaily",
+      "costCNY",
+      "createdAt",
+      "dailyActivity",
+      "events",
+      "firstTime",
+      "hours",
+      "input",
+      "isSubagent",
+      "lastEventTime",
+      "lastPrompt",
+      "lastTime",
+      "searches",
+      "sessionId",
+      "skillDaily",
+      "steps",
+      "title",
+      "tokens",
+      "toolDaily",
+      "turns",
+      "workspace",
+    ]);
+    assert.ok(shape.hours instanceof Map);
+    for (const key of ["minutes", "quarters", "tape"]) {
+      assert.equal(Object.hasOwn(shape, key), false, `aggregate.${key} must be gone`);
+    }
+  },
+  "hours only · no minutes/quarters/tape",
 );
 
 check(
@@ -751,6 +772,676 @@ check(
     assert.equal(normalizeConfig(undefined).usdRate, 7.1);
   },
   "clamped",
+);
+
+// ---------------------------------------------------------------------------
+// Heavy data layer: metadata, shell programs, heatmap, leaderboards, sessions
+// ---------------------------------------------------------------------------
+const RICH_NOW = Date.UTC(2026, 10, 8, 4, 0, 0); // Beijing 2026-11-08 12:00
+const ZONE = 8 * HOUR;
+
+/** Build one user message event with an explicit source kind. */
+function userMessageEvent({ seq, time, kind, text }) {
+  return { type: "user/message", seq, time, data: { source: { kind }, content: [{ type: "text", text }] } };
+}
+
+/** Build one tool call event; the host always serializes arguments as a string. */
+function toolCallEvent({ seq, time, name, args, callId }) {
+  const data = { name, arguments: JSON.stringify(args) };
+  if (typeof callId === "string") data.callId = callId;
+  return { type: "tool/call", seq, time, data };
+}
+
+check(
+  "commandProgramOf strips cd/VAR/export prologues and assignment noise",
+  () => {
+    assert.equal(commandProgramOf('cd "E:/Program Files/x" && python a.py'), "python");
+    assert.equal(commandProgramOf("FOO=1 BAR=2 node app.js"), "node");
+    assert.equal(commandProgramOf('export PATH="/e/bin" && grep -r x'), "grep");
+    assert.equal(commandProgramOf("cd /e/foo; ls -la"), "ls");
+    assert.equal(commandProgramOf("cd /e/foo"), "cd");
+    assert.equal(commandProgramOf("$ErrorActionPreference='SilentlyContinue'"), "");
+    assert.equal(commandProgramOf("P=\"E:/Program Files\""), "");
+    assert.equal(commandProgramOf(""), "");
+    assert.equal(commandProgramOf(undefined), "");
+  },
+  "python/node/grep/ls · assignments skipped",
+);
+
+const richEvents = [
+  { type: "session/title", seq: 1, time: RICH_NOW - 10 * HOUR, data: { title: "旧标题" } },
+  { type: "session/title", seq: 2, time: RICH_NOW - 9 * HOUR, data: { title: "新标题" } },
+  userMessageEvent({ seq: 3, time: RICH_NOW - 8 * HOUR, kind: "time-context", text: "注入的时间上下文" }),
+  userMessageEvent({ seq: 4, time: RICH_NOW - 7 * HOUR, kind: "user", text: "第一个问题" }),
+  userMessageEvent({ seq: 5, time: RICH_NOW - 6 * HOUR, kind: "progress-updates-nudge", text: "注入的进度提醒" }),
+  userMessageEvent({ seq: 6, time: RICH_NOW - 5 * HOUR, kind: "agent-message", text: "第二个问题" }),
+  { type: "turn/start", seq: 7, time: RICH_NOW - 4.8 * HOUR, data: { turn: 1 } },
+  { type: "turn/start", seq: 8, time: RICH_NOW - 4.6 * HOUR, data: { turn: 2 } },
+  { type: "turn/start", seq: 9, time: RICH_NOW - 4.4 * HOUR, data: { turn: 3 } },
+  { type: "step/start", seq: 10, time: RICH_NOW - 4.3 * HOUR, data: {} },
+  { type: "step/start", seq: 11, time: RICH_NOW - 4.25 * HOUR, data: {} },
+  toolCallEvent({ seq: 12, time: RICH_NOW - 4 * HOUR, name: "win_bash", args: { command: 'cd "E:/Program Files/x" && python a.py' }, callId: "rich-wb-1" }),
+  toolCallEvent({ seq: 13, time: RICH_NOW - 3.9 * HOUR, name: "win_bash", args: { command: "FOO=1 node app.js" } }),
+  toolCallEvent({ seq: 14, time: RICH_NOW - 3.8 * HOUR, name: "pwsh", args: { command: 'powershell -Command "Get-Item x"' }, callId: "rich-pwsh-1" }),
+  toolCallEvent({ seq: 15, time: RICH_NOW - 3.7 * HOUR, name: "win_bash", args: { command: '$env:PYTHONIOENCODING="utf-8"' } }),
+  { type: "tool/call", seq: 16, time: RICH_NOW - 3.6 * HOUR, data: { name: "win_bash", arguments: "{broken json" } },
+  toolCallEvent({ seq: 17, time: RICH_NOW - 3.5 * HOUR, name: "skill", args: { name: "grilling" } }),
+  messageEvent({ seq: 18, time: RICH_NOW - 3 * HOUR, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 1 * M, output: 0, cacheRead: 1 * M }),
+  { type: "tool/result", seq: 19, time: RICH_NOW - 4 * HOUR + 100, data: { message: { toolCallId: "rich-wb-1" } } },
+  { type: "tool/result", seq: 20, time: RICH_NOW - 3.8 * HOUR + 250, data: { message: { toolCallId: "rich-pwsh-1", isError: true } } },
+];
+
+const rich = summarizeSessionEvents("session-rich", richEvents, {
+  createdAt: RICH_NOW - 30 * 24 * HOUR,
+  pricing,
+  now: RICH_NOW,
+  zoneOffset: ZONE,
+  workspace: "E:/FILES FOR DSH/dsh-session-stats-panel",
+  isSubagent: true,
+});
+
+check(
+  "rich aggregate: last title, filtered prompt, turns/steps, per-day activity",
+  () => {
+    assert.equal(rich.title, "新标题");
+    assert.equal(rich.lastPrompt, "第二个问题", "runtime injections must be ignored");
+    assert.equal(rich.turns, 3);
+    assert.equal(rich.steps, 2);
+    assert.equal(rich.workspace, "E:/FILES FOR DSH/dsh-session-stats-panel");
+    assert.equal(rich.isSubagent, true);
+    assert.equal(rich.tokens, 2 * M);
+    assert.equal(rich.input, 1 * M);
+    assert.equal(rich.cacheRead, 1 * M);
+    const day = rich.dailyActivity.get(dayIndexOf(RICH_NOW, ZONE));
+    assert.equal(day.tokens, 2 * M);
+    assert.equal(day.turns, 3);
+  },
+  `title=${rich.title} turns=${rich.turns} steps=${rich.steps} prompt=${rich.lastPrompt}`,
+);
+
+check(
+  "rich aggregate: tool / shell program / skill buckets",
+  () => {
+    assert.deepEqual(buildToolLeaderboard([rich]).map((row) => [row.name, row.count, row.lastCalledAt]), [
+      ["win_bash", 4, RICH_NOW - 3.6 * HOUR],
+      ["pwsh", 1, RICH_NOW - 3.8 * HOUR],
+      ["skill", 1, RICH_NOW - 3.5 * HOUR],
+    ]);
+    assert.deepEqual(buildCommandLeaderboard([rich]).map((row) => [row.program, row.count]), [
+      ["node", 1],
+      ["powershell", 1],
+      ["python", 1],
+    ]);
+    assert.deepEqual(buildSkillLeaderboard([rich]), [{ name: "grilling", count: 1, lastCalledAt: RICH_NOW - 3.5 * HOUR }]);
+    // Malformed arguments and `$`-assignment commands are skipped, not ranked.
+    assert.equal(buildCommandLeaderboard([rich]).some((row) => row.program.startsWith("$")), false);
+    // IDEA-05: only calls with a paired result contribute to success/avg.
+    const toolRows = new Map(buildToolLeaderboard([rich]).map((row) => [row.name, row]));
+    assert.equal(toolRows.get("win_bash").errorCount, 0);
+    assert.equal(toolRows.get("win_bash").successRate, 1);
+    assert.equal(toolRows.get("win_bash").avgMs, 100);
+    assert.equal(toolRows.get("pwsh").errorCount, 1);
+    assert.equal(toolRows.get("pwsh").successRate, 0);
+    assert.equal(toolRows.get("pwsh").avgMs, 250);
+    // Calls without a result are unknown, never failures.
+    assert.equal(toolRows.get("skill").successRate, null);
+    assert.equal(toolRows.get("skill").avgMs, null);
+  },
+  `tools=${buildToolLeaderboard([rich]).length} programs=${buildCommandLeaderboard([rich]).length}`,
+);
+
+check(
+  "tool success metrics: pairing, fallback callId, error count, 1h clamp, unmatched ignored",
+  () => {
+    const base = RICH_NOW - 6 * HOUR;
+    const paired = summarizeSessionEvents(
+      "session-paired",
+      [
+        toolCallEvent({ seq: 1, time: base, name: "read", args: {}, callId: "pair-1" }),
+        toolCallEvent({ seq: 2, time: base + HOUR, name: "read", args: {}, callId: "pair-2" }),
+        toolCallEvent({ seq: 3, time: base + 2 * HOUR, name: "edit", args: {}, callId: "pair-3" }),
+        toolCallEvent({ seq: 4, time: base + 3 * HOUR, name: "write", args: {}, callId: "pair-4" }),
+        toolCallEvent({ seq: 5, time: base + 4 * HOUR, name: "grep", args: {}, callId: "pair-5" }),
+        // Successful result: absence of isError means success.
+        { type: "tool/result", seq: 6, time: base + 100, data: { message: { toolCallId: "pair-1" } } },
+        // Failure paired through the `message.source.callId` fallback key.
+        { type: "tool/result", seq: 7, time: base + HOUR + 300, data: { message: { source: { callId: "pair-2" }, isError: true } } },
+        // 334 s-style outlier clamps to one hour.
+        { type: "tool/result", seq: 8, time: base + 2 * HOUR + 334_192_149, data: { message: { toolCallId: "pair-3" } } },
+        // Result before the call clamps to zero, never negative.
+        { type: "tool/result", seq: 9, time: base + 4 * HOUR - 5_000, data: { message: { toolCallId: "pair-5" } } },
+        // Dangling result is ignored entirely.
+        { type: "tool/result", seq: 10, time: base + 5 * HOUR, data: { message: { toolCallId: "missing", isError: true } } },
+      ],
+      { now: RICH_NOW, zoneOffset: ZONE },
+    );
+    const rows = new Map(buildToolLeaderboard([paired]).map((row) => [row.name, row]));
+    assert.deepEqual(Object.keys(rows.get("read")).sort(), ["avgMs", "count", "errorCount", "lastCalledAt", "name", "successRate"]);
+    assert.equal(rows.get("read").count, 2);
+    assert.equal(rows.get("read").errorCount, 1);
+    assert.equal(rows.get("read").successRate, 0.5);
+    assert.equal(rows.get("read").avgMs, 200, "(100 + 300) / 2");
+    assert.equal(rows.get("read").lastCalledAt, base + HOUR);
+    assert.equal(rows.get("edit").errorCount, 0);
+    assert.equal(rows.get("edit").avgMs, MAX_TOOL_DURATION_MS, "outlier clamps to one hour");
+    assert.equal(rows.get("edit").successRate, 1);
+    assert.equal(rows.get("write").successRate, null, "no paired result means unknown");
+    assert.equal(rows.get("write").avgMs, null);
+    assert.equal(rows.get("grep").avgMs, 0, "negative duration clamps to zero");
+    assert.equal(rows.get("grep").successRate, 1);
+  },
+  "pairing · fallback key · clamp · unmatched ignored",
+);
+
+check(
+  "buildHeatmap: 56 dense days, oldest→newest, sessions counted per session",
+  () => {
+    const other = summarizeSessionEvents(
+      "session-other",
+      [
+        messageEvent({ seq: 1, time: RICH_NOW - 24 * HOUR, provider: "deepseek", model: "deepseek-v4-pro", input: 1 * M, output: 0 }),
+        { type: "turn/start", seq: 2, time: RICH_NOW - 24 * HOUR, data: {} },
+      ],
+      { now: RICH_NOW, zoneOffset: ZONE },
+    );
+    const series = buildHeatmap([rich, other], "Asia/Shanghai", RICH_NOW);
+    assert.equal(series.length, HEATMAP_DAYS);
+    assert.equal(series[HEATMAP_DAYS - 1].date, "2026-11-08");
+    assert.equal(series[0].date, "2026-09-14");
+    assert.deepEqual(series[HEATMAP_DAYS - 1], { date: "2026-11-08", tokens: 2 * M, turns: 3, sessions: 1 });
+    assert.deepEqual(series[HEATMAP_DAYS - 2], { date: "2026-11-07", tokens: 1 * M, turns: 1, sessions: 1 });
+    assert.equal(series[0].tokens, 0, "empty days are present with zeroes");
+    assert.equal(series[0].sessions, 0);
+  },
+  seriesText(buildHeatmap([rich], "Asia/Shanghai", RICH_NOW)),
+);
+
+/** Compact heatmap summary for the printable result line. */
+function seriesText(series) {
+  return `${series.length} days, last=${series[series.length - 1].date}:${series[series.length - 1].tokens}`;
+}
+
+check(
+  "leaderboards: Top 20 cap, count-desc, day-range filter is real",
+  () => {
+    const crowd = [];
+    for (let index = 0; index < 25; index += 1) {
+      const count = index + 1;
+      for (let n = 0; n < count; n += 1) {
+        crowd.push(toolCallEvent({ seq: index * 100 + n, time: RICH_NOW - HOUR, name: `tool-${String(index).padStart(2, "0")}`, args: {} }));
+      }
+    }
+    const wide = summarizeSessionEvents("session-wide", crowd, { now: RICH_NOW, zoneOffset: ZONE });
+    const today = dayIndexOf(RICH_NOW, ZONE);
+    const rows = buildToolLeaderboard([wide], { startDay: today - 7, endDay: today });
+    assert.equal(rows.length, LEADERBOARD_LIMIT);
+    assert.equal(rows[0].name, "tool-24");
+    assert.equal(rows[0].count, 25);
+    assert.equal(rows[LEADERBOARD_LIMIT - 1].count, 6);
+    for (let index = 1; index < rows.length; index += 1) {
+      assert.ok(rows[index - 1].count >= rows[index].count, "leaderboard is count-desc");
+    }
+    // A window that does not cover the call day must return nothing.
+    assert.deepEqual(buildToolLeaderboard([wide], { startDay: today + 1, endDay: today + 5 }), []);
+  },
+  "25 tools → Top 20, day filter",
+);
+
+check(
+  "buildSessionList: newest first, frozen fields, prompt cap, untitled fallback",
+  () => {
+    const chatty = summarizeSessionEvents(
+      "session-chatty",
+      [
+        userMessageEvent({ seq: 1, time: RICH_NOW - 2 * HOUR, kind: "user", text: "x".repeat(200) }),
+        messageEvent({ seq: 2, time: RICH_NOW - 2 * HOUR, provider: "deepseek", model: "deepseek-v4-pro", input: 1 * M, output: 0 }),
+      ],
+      { now: RICH_NOW, zoneOffset: ZONE, workspace: "C:/tmp" },
+    );
+    const list = buildSessionList([rich, chatty]);
+    assert.equal(list.length, 2);
+    const newest = list[0];
+    const older = list[1];
+    assert.equal(newest.id, "session-chatty");
+    assert.equal(newest.title, "x".repeat(SESSION_TITLE_FROM_PROMPT_CHARS), "prompt fallback title (24 chars)");
+    assert.equal(newest.lastPrompt.length, PROMPT_PREVIEW_CHARS);
+    assert.equal(newest.isSubagent, false);
+    assert.equal(newest.isArchived, false);
+    assert.equal(newest.workspace, "C:/tmp");
+    assert.equal(older.id, "session-rich");
+    assert.equal(older.title, "新标题");
+    assert.equal(older.lastPrompt, "第二个问题");
+    assert.equal(older.turns, 3);
+    assert.equal(older.steps, 2);
+    assert.equal(older.isSubagent, true);
+    assert.equal(older.cacheHitRate, 0.5);
+    assert.deepEqual(Object.keys(older).sort(), [
+      "cacheHitRate",
+      "costCNY",
+      "createdAt",
+      "id",
+      "isArchived",
+      "isSubagent",
+      "lastActiveAt",
+      "lastPrompt",
+      "steps",
+      "title",
+      "tokens",
+      "turns",
+      "workspace",
+    ]);
+    // F2: any event keeps a session listed — usage is not required.
+    const silent = summarizeSessionEvents("session-silent", [{ type: "step/start", seq: 1, time: RICH_NOW, data: {} }], { now: RICH_NOW });
+    const quietRows = buildSessionList([silent]);
+    assert.equal(quietRows.length, 1, "a step-only session must still be listed");
+    assert.equal(quietRows[0].tokens, 0);
+    assert.equal(quietRows[0].lastActiveAt, RICH_NOW);
+  },
+  "2 sessions · untitled · 80 char prompt",
+);
+
+check(
+  "pruneSessionAggregate keeps 60 days of activity and 31 days of tool days",
+  () => {
+    const pruned = summarizeSessionEvents(
+      "session-prune",
+      [toolCallEvent({ seq: 1, time: RICH_NOW - HOUR, name: "win_bash", args: { command: "node x.js" } })],
+      { now: RICH_NOW, zoneOffset: ZONE },
+    );
+    const activityCutoff = dayIndexOf(RICH_NOW - MAX_DAILY_AGE_MS, ZONE);
+    const leaderboardCutoff = dayIndexOf(RICH_NOW - MAX_BUCKET_AGE_MS, ZONE);
+    pruned.dailyActivity.set(activityCutoff - 1, { tokens: 5, turns: 1 });
+    pruned.dailyActivity.set(activityCutoff + 1, { tokens: 4, turns: 1 });
+    pruned.toolDaily.set(leaderboardCutoff - 1, new Map([["old", { count: 1, lastCalledAt: 1 }]]));
+    pruneSessionAggregate(pruned, RICH_NOW, ZONE);
+    assert.equal(pruned.dailyActivity.has(activityCutoff - 1), false, "activity older than 60 days is dropped");
+    assert.equal(pruned.dailyActivity.has(activityCutoff + 1), true, "recent activity survives");
+    assert.equal(pruned.toolDaily.has(leaderboardCutoff - 1), false, "tool days older than 31 days are dropped");
+    assert.equal(pruned.toolDaily.has(dayIndexOf(RICH_NOW, ZONE)), true);
+  },
+  "60d activity / 31d tool days",
+);
+
+// ---------------------------------------------------------------------------
+// IDEA-04 today / yesterday snapshots
+// ---------------------------------------------------------------------------
+const SNAP_NOW = Date.UTC(2026, 10, 8, 4, 0, 0); // Beijing 2026-11-08 12:00
+const SNAP_ZONE = 8 * HOUR;
+const snapTodayAgg = summarizeSessionEvents(
+  "snap-today",
+  [messageEvent({ seq: 1, time: SNAP_NOW - 2 * HOUR, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 1 * M, output: 0, cacheRead: 1 * M })],
+  { now: SNAP_NOW, zoneOffset: SNAP_ZONE },
+);
+const snapYesterdayAgg = summarizeSessionEvents(
+  "snap-yesterday",
+  [messageEvent({ seq: 1, time: SNAP_NOW - 24 * HOUR, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 2 * M, output: 0 })],
+  { now: SNAP_NOW, zoneOffset: SNAP_ZONE },
+);
+const snapOverview = buildOverview([snapTodayAgg, snapYesterdayAgg], {
+  windowKey: "7d",
+  now: SNAP_NOW,
+  pricing,
+  timeZone: "Asia/Shanghai",
+  usdRate: DEFAULT_USD_RATE,
+});
+
+check(
+  "overview: today/yesterday snapshots mirror the daily buckets",
+  () => {
+    assert.deepEqual(Object.keys(snapOverview.today).sort(), ["cacheHitRate", "costCNY", "sessions", "tokens"]);
+    assert.equal(snapOverview.today.tokens, 2 * M);
+    assert.equal(snapOverview.today.sessions, 1);
+    assert.equal(snapOverview.today.cacheHitRate, 0.5);
+    assert.equal(snapOverview.yesterday.tokens, 2 * M);
+    assert.equal(snapOverview.yesterday.sessions, 1);
+    assert.equal(snapOverview.yesterday.cacheHitRate, 0);
+    closeTo(snapOverview.today.costCNY, snapOverview.daily[6].costCNY, 1e-9);
+    closeTo(snapOverview.yesterday.costCNY, snapOverview.daily[5].costCNY, 1e-9);
+    // Snapshot cost is the model-cost field, not the search-inclusive total.
+    assert.ok(snapOverview.today.costCNY <= snapOverview.totals.costCNYTotal + 1e-9);
+  },
+  `today=${snapOverview.today.tokens} yesterday=${snapOverview.yesterday.tokens}`,
+);
+
+check(
+  "overview: today null when today is idle even with yesterday activity",
+  () => {
+    const onlyYesterday = buildOverview([snapYesterdayAgg], { windowKey: "7d", now: SNAP_NOW, pricing, timeZone: "Asia/Shanghai", usdRate: DEFAULT_USD_RATE });
+    assert.equal(onlyYesterday.today, null);
+    assert.ok(onlyYesterday.yesterday !== null);
+    assert.equal(onlyYesterday.yesterday.tokens, 2 * M);
+  },
+  "today=null yesterday=present",
+);
+
+check(
+  "overview: yesterday null when only today has activity",
+  () => {
+    const onlyToday = buildOverview([snapTodayAgg], { windowKey: "7d", now: SNAP_NOW, pricing, timeZone: "Asia/Shanghai", usdRate: DEFAULT_USD_RATE });
+    assert.ok(onlyToday.today !== null);
+    assert.equal(onlyToday.yesterday, null);
+  },
+  "today=present yesterday=null",
+);
+
+check(
+  "overview: both snapshots and the forecast are null on an empty corpus",
+  () => {
+    const empty = buildOverview([], { windowKey: "7d", now: SNAP_NOW, pricing, timeZone: "Asia/Shanghai", usdRate: DEFAULT_USD_RATE });
+    assert.equal(empty.today, null);
+    assert.equal(empty.yesterday, null);
+    assert.equal(empty.forecast, null);
+  },
+  "null / null / null",
+);
+
+// ---------------------------------------------------------------------------
+// IDEA-01 cost forecast
+// ---------------------------------------------------------------------------
+const FORECAST_NOW = Date.UTC(2026, 10, 8, 4, 0, 0); // Beijing 2026-11-08; November has 30 days → 22 left
+const forecastTodayDay = dayIndexOf(FORECAST_NOW, SNAP_ZONE);
+
+/** `YYYY-MM-DD` of one day index (same convention as the module). */
+function dayDate(day) {
+  return new Date(day * DAY_MS).toISOString().slice(0, 10);
+}
+
+check(
+  "computeForecast: exact linear fit, month-end extrapolation, 22 days left",
+  () => {
+    const dailyByDate = new Map();
+    for (let index = 0; index < 10; index += 1) {
+      dailyByDate.set(dayDate(forecastTodayDay - index), 2 + 0.5 * (29 - index));
+    }
+    const forecast = computeForecast(dailyByDate, FORECAST_NOW, "Asia/Shanghai");
+    assert.ok(forecast !== null);
+    closeTo(forecast.slope, 0.5, 1e-9);
+    closeTo(forecast.intercept, 2, 1e-9);
+    closeTo(forecast.monthEndEstimate, 2 + 0.5 * (29 + 22), 1e-9);
+    closeTo(forecast.sigma, 0, 1e-9);
+    assert.equal(forecast.dataPoints, 10);
+    assert.equal(forecast.daysLeft, 22);
+    assert.deepEqual(Object.keys(forecast).sort(), ["dataPoints", "daysLeft", "intercept", "monthEndEstimate", "sigma", "slope"]);
+  },
+  "slope=0.5 intercept=2 end=27.5",
+);
+
+check(
+  "computeForecast: fewer than 7 positive days returns null",
+  () => {
+    const dailyByDate = new Map();
+    for (let index = 0; index < 6; index += 1) dailyByDate.set(dayDate(forecastTodayDay - index), 5);
+    assert.equal(computeForecast(dailyByDate, FORECAST_NOW, "Asia/Shanghai"), null);
+    // Zero-cost and missing days never become data points.
+    assert.equal(computeForecast(new Map([[dayDate(forecastTodayDay), 0]]), FORECAST_NOW, "Asia/Shanghai"), null);
+    assert.equal(computeForecast(new Map(), FORECAST_NOW, "Asia/Shanghai"), null);
+  },
+  "6 points → null",
+);
+
+check(
+  "computeForecast: declining trend never yields a negative estimate",
+  () => {
+    const dailyByDate = new Map();
+    for (let x = 0; x < 10; x += 1) dailyByDate.set(dayDate(forecastTodayDay - (29 - x)), 10 - x);
+    const forecast = computeForecast(dailyByDate, FORECAST_NOW, "Asia/Shanghai");
+    assert.ok(forecast !== null);
+    closeTo(forecast.slope, -1, 1e-9);
+    assert.equal(forecast.monthEndEstimate, 0, "negative extrapolation is clamped to zero");
+    assert.ok(forecast.sigma >= 0);
+    for (const key of ["slope", "intercept", "monthEndEstimate", "sigma"]) {
+      assert.ok(Number.isFinite(forecast[key]), `${key} must be finite`);
+    }
+  },
+  "slope=-1 → end=0",
+);
+
+check(
+  "overview: forecast is wired from the 30-day daily history",
+  () => {
+    const tenDayAggregates = [];
+    for (let index = 0; index < 10; index += 1) {
+      tenDayAggregates.push(
+        summarizeSessionEvents(
+          `session-fc-${index}`,
+          [
+            messageEvent({
+              seq: 1,
+              time: FORECAST_NOW - index * DAY_MS - 2 * HOUR,
+              provider: "opencode-go",
+              model: "deepseek-v4.1-flash",
+              input: 1 * M,
+              output: 0,
+            }),
+          ],
+          { now: FORECAST_NOW, zoneOffset: SNAP_ZONE },
+        ),
+      );
+    }
+    const forecastOverview = buildOverview(tenDayAggregates, {
+      windowKey: "30d",
+      now: FORECAST_NOW,
+      pricing,
+      timeZone: "Asia/Shanghai",
+      usdRate: DEFAULT_USD_RATE,
+    });
+    assert.ok(forecastOverview.forecast !== null);
+    assert.equal(forecastOverview.forecast.dataPoints, 10);
+    assert.ok(forecastOverview.forecast.monthEndEstimate >= 0);
+    assert.ok(Number.isFinite(forecastOverview.forecast.monthEndEstimate));
+    assert.equal(forecastOverview.forecast.daysLeft, 22);
+    // The main fixture has fewer than 7 active-cost days → null, never NaN.
+    assert.equal(overview.forecast, null);
+    assert.equal(typeof overview.today, "object");
+    closeTo(overview.today.tokens, 15 * M, 1e-9);
+    closeTo(overview.yesterday.tokens, 9.6 * M, 1e-9);
+  },
+  "10 points · daysLeft=22 · default fixture null",
+);
+
+// ---------------------------------------------------------------------------
+// F1 / F2 regression: 60-day heatmap + lifetime session-list totals
+// ---------------------------------------------------------------------------
+const REG_NOW = Date.UTC(2026, 10, 9, 4, 0, 0); // Beijing 2026-11-09 12:00
+const REG_ZONE = 8 * HOUR;
+
+check(
+  "F1: 40-day-old usage still lands in the 60-day daily activity",
+  () => {
+    const old = summarizeSessionEvents(
+      "session-old-usage",
+      [messageEvent({ seq: 1, time: REG_NOW - 40 * DAY_MS, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 1 * M, output: 0 })],
+      { now: REG_NOW, zoneOffset: REG_ZONE },
+    );
+    const oldDay = dayIndexOf(REG_NOW - 40 * DAY_MS, REG_ZONE);
+    assert.equal(old.dailyActivity.get(oldDay)?.tokens, 1 * M, "32-56-day tokens must reach dailyActivity");
+    // Window statistics keep the 31-day horizon: no hourly bucket here.
+    assert.equal(old.hours.size, 0);
+    const weekly = buildOverview([old], { windowKey: "7d", now: REG_NOW, pricing, timeZone: "Asia/Shanghai", usdRate: DEFAULT_USD_RATE });
+    assert.equal(weekly.totals.tokens, 0);
+    // The 56-day heatmap still shows the day with real tokens.
+    const series = buildHeatmap([old], "Asia/Shanghai", REG_NOW);
+    const entry = series.find((row) => row.date === new Date(oldDay * DAY_MS).toISOString().slice(0, 10));
+    assert.ok(entry !== undefined);
+    assert.equal(entry.tokens, 1 * M);
+    // Beyond 60 days the activity map drops the day entirely.
+    const tooOld = summarizeSessionEvents(
+      "session-too-old",
+      [messageEvent({ seq: 1, time: REG_NOW - 70 * DAY_MS, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 1 * M, output: 0 })],
+      { now: REG_NOW, zoneOffset: REG_ZONE },
+    );
+    assert.equal(tooOld.dailyActivity.size, 0);
+  },
+  "40-day tokens in heatmap · 70-day dropped",
+);
+
+check(
+  "F2: session list uses lifetime tokens and lastEventTime from every event kind",
+  () => {
+    const recentUsage = messageEvent({ seq: 1, time: REG_NOW - 2 * HOUR, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 1 * M, output: 0 });
+    const oldUsage = messageEvent({ seq: 2, time: REG_NOW - 40 * DAY_MS, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 3 * M, output: 0 });
+    const lateTool = { type: "tool/call", seq: 3, time: REG_NOW - 30 * 60_000, data: { name: "read", arguments: "{}" } };
+    const aggregate = summarizeSessionEvents("session-lifetime", [recentUsage, oldUsage, lateTool], { now: REG_NOW, zoneOffset: REG_ZONE });
+    // Lifetime totals: a 31-day window would only see 1M.
+    assert.equal(aggregate.tokens, 4 * M);
+    assert.equal(aggregate.hours.size, 1, "only the recent hour is in the window bucket");
+    assert.equal(aggregate.lastTime, REG_NOW - 2 * HOUR, "lastTime keeps the last usage");
+    const rows = buildSessionList([aggregate]);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].tokens, 4 * M);
+    assert.equal(rows[0].lastActiveAt, REG_NOW - 30 * 60_000, "a later tool call is the last activity");
+    // A metadata-only session is listed too, with an exact last event time.
+    const metaOnly = summarizeSessionEvents(
+      "session-meta",
+      [
+        { type: "session/title", seq: 1, time: REG_NOW - 5 * HOUR, data: { title: "只有标题" } },
+        { type: "turn/start", seq: 2, time: REG_NOW - 4 * HOUR, data: { turn: 1 } },
+      ],
+      { now: REG_NOW, zoneOffset: REG_ZONE },
+    );
+    const metaRows = buildSessionList([metaOnly]);
+    assert.equal(metaRows.length, 1);
+    assert.equal(metaRows[0].lastActiveAt, REG_NOW - 4 * HOUR);
+    assert.equal(metaRows[0].title, "只有标题");
+  },
+  "lifetime 4M · lastActiveAt from tool call · meta-only listed",
+);
+
+check(
+  "prompt filter: a tail runtime injection never becomes the last prompt",
+  () => {
+    const aggregate = summarizeSessionEvents(
+      "session-tail",
+      [
+        { type: "user/message", seq: 1, time: REG_NOW - 3 * HOUR, data: { source: { kind: "user" }, content: [{ type: "text", text: "真实问题" }] } },
+        { type: "user/message", seq: 2, time: REG_NOW - 2 * HOUR, data: { source: { kind: "time-context" }, content: [{ type: "text", text: "Time sampled while preparing turn 1" }] } },
+        { type: "user/message", seq: 3, time: REG_NOW - 1 * HOUR, data: { source: { kind: "progress-updates-nudge" }, content: [{ type: "text", text: "进度提醒注入" }] } },
+      ],
+      { now: REG_NOW, zoneOffset: REG_ZONE },
+    );
+    // Broadening the source-kind filter would make these assertions fail.
+    assert.equal(aggregate.lastPrompt, "真实问题");
+    assert.equal(buildSessionList([aggregate])[0].lastPrompt, "真实问题");
+  },
+  "tail injections ignored",
+);
+
+check(
+  "events-sample.json: derived contract (title / prompt / turns / fork owned tokens)",
+  () => {
+    const fixture = JSON.parse(readFileSync(new URL("./fixtures/events-sample.json", import.meta.url), "utf8"));
+    // Fixture events are from 2026-10-05: stay near them for window rankings,
+    // then jump 35 days ahead to prove the 60-day daily layer survives pruning.
+    const nearNow = Date.UTC(2026, 9, 10, 4, 0, 0);
+    const farNow = Date.UTC(2026, 10, 9, 4, 0, 0);
+    const [top, fork] = fixture.sessions;
+    const derived = fixture.derived;
+    const topAggregate = summarizeSessionEvents(
+      top.id,
+      top.events.slice(Number(top.inheritedEventCount) || 0),
+      { now: nearNow, zoneOffset: REG_ZONE, workspace: top.header?.cwd ?? "" },
+    );
+    assert.equal(topAggregate.title, derived.title);
+    assert.equal(topAggregate.lastPrompt, derived.lastPrompt, "tail runtime injections must be ignored");
+    assert.equal(topAggregate.turns, derived.turns);
+    assert.equal(topAggregate.steps, derived.steps);
+    assert.equal(topAggregate.tokens, derived.tokensTotal);
+    const sortRows = (rows) => rows.map((row) => [row.name ?? row.program, row.count]).sort((left, right) => left[0].localeCompare(right[0]));
+    assert.deepEqual(
+      sortRows(buildToolLeaderboard([topAggregate])),
+      Object.entries(derived.toolCallCounts).sort((left, right) => left[0].localeCompare(right[0])),
+    );
+    assert.deepEqual(
+      sortRows(buildCommandLeaderboard([topAggregate])),
+      Object.entries(derived.shellPrograms).sort((left, right) => left[0].localeCompare(right[0])),
+    );
+    assert.deepEqual(
+      sortRows(buildSkillLeaderboard([topAggregate])),
+      Object.entries(derived.skillNames).sort((left, right) => left[0].localeCompare(right[0])),
+    );
+    // 35 days later the hourly window is pruned but the 60-day daily layer survives.
+    const aged = summarizeSessionEvents(top.id, top.events, { now: farNow, zoneOffset: REG_ZONE });
+    assert.equal(aged.hours.size, 0, "hourly buckets stop at 31 days");
+    assert.ok(aged.dailyActivity.size > 0, "daily activity keeps 60 days");
+    assert.equal(
+      [...aged.dailyActivity.values()].reduce((sum, day) => sum + day.tokens, 0),
+      derived.tokensTotal,
+      "F1: the whole fixture token total must reach daily activity",
+    );
+
+    // Fork: only the tail after inheritedEventCount is owned activity.
+    const forkAggregate = summarizeSessionEvents(fork.id, fork.events.slice(Number(fork.inheritedEventCount) || 0), { now: nearNow, zoneOffset: REG_ZONE });
+    const naive = summarizeSessionEvents(fork.id, fork.events, { now: nearNow, zoneOffset: REG_ZONE });
+    assert.equal(forkAggregate.tokens, derived.fork.ownedTokens);
+    assert.equal(naive.tokens, derived.fork.naiveAllEventsTokens, "unsliced fork double-counts the parent prefix");
+    assert.equal(forkAggregate.turns, derived.fork.ownedTurns);
+    assert.equal(forkAggregate.toolDaily.size, 0, "no owned tool calls after the fork point");
+    assert.ok(naive.toolDaily.size > 0, "the inherited prefix does contain tool calls");
+    assert.equal(forkAggregate.title, derived.fork.title);
+    assert.equal(forkAggregate.lastPrompt, derived.fork.lastPrompt);
+  },
+  "fixture: 12757 tokens · fork 200 vs 1300",
+);
+
+// ---------------------------------------------------------------------------
+// M1: day windows must resolve days with the window's own zone offset
+// ---------------------------------------------------------------------------
+const M1_EVENT_TIME = Date.UTC(2026, 10, 8, 23, 30, 0); // 23:30 UTC — next day in +08:00
+const M1_ZONES = ["Asia/Shanghai", "UTC", "America/New_York", "Europe/Berlin"];
+const M1_NOW = Date.UTC(2026, 10, 9, 12, 0, 0);
+
+check(
+  "M1: a 23:30 UTC event lands on its own day for every viewer zone",
+  () => {
+    const event = [messageEvent({ seq: 1, time: M1_EVENT_TIME, provider: "opencode-go", model: "deepseek-v4.1-flash", input: 1 * M, output: 0 })];
+    for (const timeZone of M1_ZONES) {
+      const zoneOffset = zoneOffsetMs(timeZone, M1_NOW);
+      const window = resolveWindow("7d", M1_NOW, zoneOffset);
+      assert.equal(window.offsetMs, zoneOffset, `${timeZone}: resolveWindow must expose its offset`);
+      const day = dayIndexOf(M1_EVENT_TIME, zoneOffset);
+      assert.equal(windowBucketIndexOf(window, hourIndexOf(M1_EVENT_TIME)), day - window.startDay, `${timeZone}: bucket index`);
+      const aggregate = summarizeSessionEvents("session-m1", event, { now: M1_NOW, zoneOffset });
+      const overview = buildOverview([aggregate], { windowKey: "7d", now: M1_NOW, timeZone, pricing, usdRate: DEFAULT_USD_RATE });
+      assert.equal(overview.totals.tokens, 1 * M, `${timeZone}: the event must be counted`);
+      assert.equal(overview.daily[day - window.startDay].tokens, 1 * M, `${timeZone}: event must stay on its own day`);
+    }
+  },
+  "4 zones · 23:30 UTC",
+);
+
+check(
+  "M1: uniform 7x24 corpus totals 168M in every viewer zone",
+  () => {
+    for (const timeZone of M1_ZONES) {
+      const zoneOffset = zoneOffsetMs(timeZone, M1_NOW);
+      const endDay = dayIndexOf(M1_NOW, zoneOffset);
+      const events = [];
+      let seq = 1;
+      for (let day = endDay - 6; day <= endDay; day += 1) {
+        for (let hour = 0; hour < 24; hour += 1) {
+          events.push(
+            messageEvent({
+              seq,
+              time: day * DAY_MS - zoneOffset + hour * HOUR,
+              provider: "opencode-go",
+              model: "deepseek-v4.1-flash",
+              input: 1 * M,
+              output: 0,
+            }),
+          );
+          seq += 1;
+        }
+      }
+      // Reference instant: 23:59:59.999 of the last local day, so every bucket is inside the window.
+      const scanNow = (endDay + 1) * DAY_MS - zoneOffset - 1;
+      const aggregate = summarizeSessionEvents("session-uniform", events, { now: scanNow, zoneOffset });
+      const overview = buildOverview([aggregate], { windowKey: "7d", now: scanNow, timeZone, pricing, usdRate: DEFAULT_USD_RATE });
+      assert.equal(overview.daily.length, 7);
+      assert.equal(overview.totals.tokens, 168 * M, `${timeZone}: late-evening hours must not be dropped`);
+      assert.equal(overview.daily.reduce((sum, row) => sum + row.tokens, 0), 168 * M, `${timeZone}: daily must sum to totals`);
+    }
+  },
+  "168M · 4 zones",
 );
 
 // ---------------------------------------------------------------------------

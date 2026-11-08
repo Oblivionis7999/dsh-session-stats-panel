@@ -111,7 +111,7 @@ body[data-ds-dark-theme] .ssp-root{
 .ssp-card-aside{flex:none;text-align:right}
 .ssp-aside-main{font-size:15px;font-weight:600;line-height:22px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ssp-aside-sub{margin-top:2px;font-size:12px;line-height:18px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
-.ssp-bars{display:flex;align-items:flex-end;gap:10px;height:176px;margin-top:18px}
+.ssp-bars{display:flex;align-items:flex-end;gap:10px;height:176px}
 .ssp-bar-col{display:flex;align-items:flex-end;justify-content:center;flex:1;min-width:0;height:100%}
 .ssp-bar{display:flex;flex-direction:column-reverse;width:100%;max-width:38px;border-radius:6px 6px 2px 2px;overflow:hidden;min-height:2px;transition:opacity .12s}
 .ssp-bar:hover{opacity:.85}
@@ -164,6 +164,87 @@ body[data-ds-dark-theme] .ssp-legend-dot,
 body[data-ds-dark-theme] .ssp-model-dot,
 body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.04)}
 .ssp-root[data-loading=true] .ssp-cards,.ssp-root[data-loading=true] .ssp-row{opacity:.72;transition:opacity .15s}
+/* ---- today stripe (calendar-day comparison) ---- */
+.ssp-today{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px;padding:14px 20px}
+.ssp-today-cell{min-width:0}
+.ssp-today-label{font-size:11px;line-height:16px;color:var(--ssp-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ssp-today-value{display:flex;align-items:baseline;gap:8px;margin-top:3px;font-size:16px;font-weight:600;line-height:22px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ssp-today-delta{font-size:11px;font-weight:500;line-height:16px;font-variant-numeric:tabular-nums}
+.ssp-today-up{color:var(--ssp-danger)}
+.ssp-today-down{color:var(--ssp-ok-text)}
+.ssp-today-flat{color:var(--ssp-text-3)}
+.ssp-today-empty{font-size:12px;line-height:18px;color:var(--ssp-text-3);grid-column:1/-1}
+.ssp-hint{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:7px 12px;border:1px solid var(--ssp-border);border-radius:10px;background:var(--ssp-hover);color:var(--ssp-text-3);font-size:11px;line-height:16px}
+.ssp-hint::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:#f2c14e}
+/* ---- forecast tail beside the daily bars ---- */
+.ssp-chart-wrap{display:flex;align-items:flex-start;gap:12px;margin-top:18px}
+.ssp-bars-wrap{flex:1;min-width:0}
+.ssp-forecast{flex:0 0 88px;display:flex;flex-direction:column;height:176px;padding-left:12px;border-left:1px dashed var(--ssp-border-strong)}
+.ssp-forecast svg{display:block;width:100%;flex:1;min-height:0;overflow:visible}
+.ssp-forecast-line{fill:none;stroke:var(--ssp-text-3);stroke-width:1.2;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+.ssp-forecast-text{margin-top:8px;font-size:10px;line-height:14px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums;white-space:normal}
+/* ---- chunked loading: still-alive cues ---- */.ssp-progress{position:sticky;top:0;height:2px;background:var(--ssp-border);overflow:hidden;z-index:20}
+.ssp-progress-fill{height:100%;width:38%;background:linear-gradient(90deg,transparent,var(--ssp-accent),var(--ssp-accent-strong),transparent);animation:ssp-progress-slide 1.1s ease-in-out infinite}
+@keyframes ssp-progress-slide{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+.ssp-analyzing{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:18px;color:var(--ssp-text-3)}
+.ssp-dot{width:4px;height:4px;border-radius:50%;background:currentColor;animation:ssp-dot-blink 1.1s ease-in-out infinite}
+.ssp-dot:nth-of-type(2){animation-delay:.15s}
+.ssp-dot:nth-of-type(3){animation-delay:.3s}
+@keyframes ssp-dot-blink{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-1px)}}
+.ssp-quiet{display:flex;align-items:center;justify-content:center;min-height:96px;font-size:12px;line-height:18px;color:var(--ssp-text-3);text-align:center}
+/* ---- segmented control (heatmap mode, session sort) ---- */
+.ssp-seg{display:inline-flex;align-items:center;gap:1px;padding:2px;border:1px solid var(--ssp-border);border-radius:999px;background:var(--ssp-hover);flex:none}
+.ssp-seg-btn{border:0;background:transparent;color:var(--ssp-text-3);font:inherit;font-size:11px;line-height:16px;padding:2px 9px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.ssp-seg-btn.ssp-seg-active{background:var(--ssp-card);color:var(--ssp-text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ssp-seg-btn:focus-visible{outline:2px solid var(--dsw-focus-ring-color,var(--ssp-accent));outline-offset:1px}
+/* ---- heatmap calendar (8 columns x 7 rows) ---- */
+.ssp-heat{margin-top:14px}
+.ssp-heat-grid{display:flex;gap:3px;margin-top:16px;overflow-x:auto;padding-bottom:2px}
+.ssp-heat-col{display:flex;flex-direction:column;gap:3px;flex:none}
+.ssp-heat-cell{display:block;width:16px;height:16px;border-radius:3px;background:var(--ssp-accent);opacity:.06}
+.ssp-heat-l1{opacity:.22}
+.ssp-heat-l2{opacity:.44}
+.ssp-heat-l3{opacity:.7}
+.ssp-heat-l4{opacity:1}
+.ssp-heat-cell:hover{outline:1px solid var(--ssp-accent-strong);outline-offset:1px}
+.ssp-heat-legend{display:flex;align-items:center;gap:4px;margin-top:10px;font-size:11px;line-height:16px;color:var(--ssp-text-3)}
+.ssp-heat-swatch{width:10px;height:10px}
+/* ---- leaderboards ---- */
+.ssp-rank-list{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+.ssp-rank-row{display:grid;grid-template-columns:minmax(64px,108px) minmax(0,1fr) 46px;align-items:center;gap:8px;font-size:12px;line-height:18px;color:var(--ssp-text-2)}
+.ssp-rank-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ssp-text)}
+.ssp-rank-bar{display:block;height:8px;border-radius:4px;background:var(--ssp-hover);overflow:hidden}
+.ssp-rank-fill{display:block;height:100%;min-width:2px;border-radius:4px;background:var(--ssp-accent)}
+.ssp-rank-count{text-align:right;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
+/* ---- tool leaderboard: success-rate badge + average duration ---- */
+.ssp-rank-row-rich{grid-template-columns:minmax(96px,140px) minmax(0,1fr) 52px 56px 48px}
+.ssp-rank-ms{text-align:right;color:var(--ssp-text-3);font-size:11px;line-height:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ssp-rate{display:inline-flex;align-items:center;justify-content:center;justify-self:end;height:16px;padding:0 5px;border-radius:5px;font-size:10px;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ssp-rate-ok{background:var(--ssp-ok-soft);color:var(--ssp-ok-text)}
+.ssp-rate-warn{background:rgba(242,193,78,.18);color:#b8860b}
+.ssp-rate-bad{background:var(--ssp-danger-soft);color:var(--ssp-danger)}
+.ssp-rate-unknown{background:transparent;color:var(--ssp-text-3)}
+body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2c14e}
+/* ---- session list ---- */
+.ssp-sessions{margin-top:14px}
+.ssp-list-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ssp-search{flex:1 1 160px;min-width:140px;height:28px;padding:0 11px;border:1px solid var(--ssp-border);border-radius:14px;background:var(--ssp-bg);color:var(--ssp-text);font:inherit;font-size:12px;line-height:20px;outline:none}
+.ssp-search::placeholder{color:var(--ssp-text-3)}
+.ssp-search:focus{border-color:var(--ssp-accent)}
+.ssp-check{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:18px;color:var(--ssp-text-2);cursor:pointer;white-space:nowrap}
+.ssp-check input{accent-color:var(--ssp-accent);margin:0}
+.ssp-sess-list{display:flex;flex-direction:column;margin-top:12px;max-height:420px;overflow-y:auto}
+.ssp-sess-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:9px 2px;border-bottom:.5px solid var(--ssp-border)}
+.ssp-sess-row:last-child{border-bottom:0}
+.ssp-sess-row[data-archived=true]{opacity:.55}
+.ssp-sess-head{display:flex;align-items:baseline;gap:8px;min-width:0}
+.ssp-sess-title{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;line-height:18px;font-weight:500;color:var(--ssp-text)}
+.ssp-sess-tag{flex:none;padding:0 5px;border-radius:6px;background:var(--ssp-hover);color:var(--ssp-text-3);font-size:10px;line-height:16px;white-space:nowrap}
+.ssp-sess-prompt{margin-top:3px;font-size:11px;line-height:16px;color:var(--ssp-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ssp-sess-side{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ssp-sess-cost{font-size:12px;line-height:18px;color:var(--ssp-text)}
+.ssp-sess-time{font-size:10px;line-height:16px;color:var(--ssp-text-3)}
+.ssp-sess-foot{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;font-size:10px;line-height:16px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
 @media (max-width:900px){
   .ssp-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ssp-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -174,148 +255,35 @@ body[data-ds-dark-theme] .ssp-model-bar-fill{filter:brightness(1.12) saturate(1.
 }
 @media (max-width:560px){
   .ssp-cards{grid-template-columns:minmax(0,1fr)}
+  .ssp-today{padding:12px 14px}
+  .ssp-sess-row{grid-template-columns:minmax(0,1fr)}
+  .ssp-sess-side{text-align:left;margin-top:4px}
+  .ssp-rate{padding:0 4px}
+  .ssp-heat-cell{width:14px;height:14px}
+}
+@media (max-width:1100px){
+  .ssp-today{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ssp-rank-row{grid-template-columns:minmax(56px,86px) minmax(0,1fr) 42px}
+  .ssp-rank-row-rich{grid-template-columns:minmax(72px,112px) minmax(0,1fr) 52px 56px 44px}
+  .ssp-forecast{flex-basis:72px}
+}
+@media (max-width:720px){
+  .ssp-today{grid-template-columns:minmax(0,1fr);padding:12px 16px}
+  .ssp-chart-wrap{flex-direction:column;gap:10px}
+  .ssp-forecast{flex:1 1 auto;width:100%;height:72px;border-left:0;border-top:1px dashed var(--ssp-border-strong);padding-left:0;padding-top:8px}
+  .ssp-list-tools{flex-direction:column;align-items:stretch}
+  .ssp-rank-row{grid-template-columns:minmax(0,1fr) 40px}
+  .ssp-rank-row-rich{grid-template-columns:minmax(0,1fr) 52px 40px}
+  .ssp-rank-ms{display:none}
+  .ssp-rank-bar{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   .ssp-tab,.ssp-cur,.ssp-bar,.ssp-donut-seg{transition:none}
+  .ssp-root,.ssp-progress-fill,.ssp-dot{animation:none}
 }
-/* ---- terminal (行情终端) ---- */
-.ssp-term{--up:#DD3538;--down:#0B9D6E;--gold:#B4841A;--grid:#ECF0F6;--axis:#D5DCE7;min-height:100%;padding:20px 22px 16px;background:var(--ssp-bg);color:var(--ssp-text-1)}
-body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--grid:#141A25;--axis:#232C3B}
-.ssp-term-page{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.ssp-term-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-.ssp-term-title{font-size:22px;font-weight:650;line-height:28px;margin:0}
-.ssp-term-sub{display:block;font-size:10px;letter-spacing:.18em;color:var(--ssp-text-3);margin-top:2px}
-.ssp-term-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.ssp-view-toggle{display:inline-flex;border:1px solid var(--ssp-border);border-radius:999px;padding:2px;background:var(--ssp-hover)}
-.ssp-view-btn{border:0;background:transparent;color:var(--ssp-text-3);font-size:11px;line-height:18px;padding:2px 9px;border-radius:999px;cursor:pointer;font-family:inherit}
-.ssp-view-btn.ssp-view-active{background:var(--ssp-bg);color:var(--ssp-text-1);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.ssp-index-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-.ssp-index{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--ssp-border);border-radius:12px;background:var(--ssp-bg);cursor:pointer;text-align:left;font-family:inherit}
-.ssp-index-active{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
-.ssp-index-label{font-size:11px;color:var(--ssp-text-3)}
-.ssp-index-row{display:flex;align-items:baseline;gap:4px}
-.ssp-index-value{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
-.ssp-index-unit{font-size:10px;color:var(--ssp-text-3)}
-.ssp-term-chg{font-size:11px;font-variant-numeric:tabular-nums}
-.ssp-term-chg-up{color:var(--up)}
-.ssp-term-chg-down{color:var(--down)}
-.ssp-term-chg-flat{color:var(--ssp-text-3)}
-.ssp-mini-k{width:100%;height:22px;display:block;margin-top:2px}
-.ssp-mini-wick-up{stroke:var(--up);stroke-width:.8;opacity:.8}
-.ssp-mini-wick-down{stroke:var(--down);stroke-width:.8;opacity:.8}
-.ssp-mini-body-up{fill:var(--up)}
-.ssp-mini-body-down{fill:none;stroke:var(--down);stroke-width:.8}
-.ssp-instrument{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:2px 2px 0}
-.ssp-instrument-name{font-size:13px;color:var(--ssp-text-3)}
-.ssp-instrument-price-row{display:flex;align-items:baseline;gap:8px;margin-top:2px}
-.ssp-instrument-price{font-size:30px;font-weight:700;line-height:36px;font-variant-numeric:tabular-nums}
-.ssp-instrument-unit{font-size:11px;color:var(--ssp-text-3)}
-.ssp-instrument-stats{display:flex;gap:18px;flex-wrap:wrap}
-.ssp-instrument-stat{display:flex;flex-direction:column;gap:1px}
-.ssp-instrument-stat-label{font-size:10px;color:var(--ssp-text-3)}
-.ssp-instrument-stat-value{font-size:13px;font-variant-numeric:tabular-nums}
-.ssp-term-chart-card{padding:12px 14px 10px}
-.ssp-term-chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.ssp-term-ohlc{font-size:11px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
-.ssp-term-chart{position:relative;margin-top:6px}
-.ssp-term-chart svg{display:block;width:100%;height:auto}
-.ssp-term-grid-line{stroke:var(--grid);stroke-width:1}
-.ssp-term-axis-line{stroke:var(--axis);stroke-width:1}
-.ssp-term-axis{fill:var(--ssp-text-3);font-size:10px;font-variant-numeric:tabular-nums}
-.ssp-term-axis-hot{fill:var(--ssp-text-1)}
-.ssp-term-cross{stroke:var(--ssp-text-3);stroke-width:.8;stroke-dasharray:3 3;opacity:.7}
-.ssp-candle-wick-up{stroke:var(--up);stroke-width:1}
-.ssp-candle-wick-down{stroke:var(--down);stroke-width:1}
-.ssp-candle-body.ssp-candle-up{fill:var(--up)}
-.ssp-candle-body.ssp-candle-down{fill:none;stroke:var(--down);stroke-width:1}
-.ssp-candle-body.ssp-candle-flat{fill:var(--ssp-text-3)}
-.ssp-candle-body.ssp-candle-empty{fill:var(--grid)}
-.ssp-ma{stroke-width:1.2;opacity:.85;fill:none}
-.ssp-ma5{stroke:var(--gold)}
-.ssp-ma10{stroke:#4dabf7}
-.ssp-ma20{stroke:#9775fa}
-.ssp-term-legend{display:flex;gap:12px;align-items:center;font-size:11px;color:var(--ssp-text-3);margin-top:4px;flex-wrap:wrap}
-.ssp-term-legend-spacer{flex:1}
-.ssp-term-legend-item.ssp-ma5{color:var(--gold)}
-.ssp-term-legend-item.ssp-ma10{color:#4dabf7}
-.ssp-term-legend-item.ssp-ma20{color:#9775fa}
-.ssp-term-tip{position:absolute;top:8px;right:8px;min-width:200px;max-width:280px;background:var(--ssp-bg);border:1px solid var(--ssp-border);border-radius:10px;padding:8px 10px;box-shadow:0 8px 20px rgba(0,0,0,.12);font-size:11px;line-height:17px;z-index:5;pointer-events:none}
-.ssp-term-tip-left{right:auto;left:8px}
-.ssp-term-tip-head{font-weight:600;margin-bottom:4px}
-.ssp-term-tip-grid{display:flex;flex-wrap:wrap;gap:4px 12px;font-variant-numeric:tabular-nums}
-.ssp-term-tip-model{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ssp-term-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px}
-.ssp-watch-list,.ssp-tape-list{display:flex;flex-direction:column;margin-top:8px}
-.ssp-watch-row{display:grid;grid-template-columns:58px minmax(0,1fr) 76px 70px 66px 70px;align-items:center;gap:8px;padding:5px 2px;border:0;border-bottom:.5px solid var(--ssp-border);background:transparent;cursor:pointer;text-align:left;font-size:12px;color:var(--ssp-text-2);font-family:inherit}
-.ssp-watch-row:last-child{border-bottom:0}
-.ssp-watch-active{background:var(--ssp-hover)}
-.ssp-watch-code{font-size:11px;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
-.ssp-watch-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ssp-watch-price{text-align:right;font-variant-numeric:tabular-nums}
-.ssp-watch-cost{text-align:right;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
-.ssp-tape-row{display:grid;grid-template-columns:64px 12px minmax(0,1fr) 70px 70px;align-items:center;gap:6px;padding:4px 2px;font-size:11px;color:var(--ssp-text-2);font-variant-numeric:tabular-nums}
-.ssp-tape-time{color:var(--ssp-text-3)}
-.ssp-tape-dot{width:7px;height:7px;border-radius:50%}
-.ssp-tape-dot-up{background:var(--up)}
-.ssp-tape-dot-down{background:var(--down)}
-.ssp-tape-dot-search{background:var(--gold)}
-.ssp-tape-model{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ssp-tape-tokens,.ssp-tape-cost{text-align:right;color:var(--ssp-text-3)}
-.ssp-pos-table{display:flex;flex-direction:column;margin-top:10px}
-.ssp-pos-row{display:grid;grid-template-columns:62px minmax(160px,1.6fr) 82px 66px minmax(90px,1fr) 90px 78px;align-items:center;gap:10px;padding:6px 2px;border-bottom:.5px solid var(--ssp-border);font-size:12px;color:var(--ssp-text-2)}
-.ssp-pos-head{font-size:11px;color:var(--ssp-text-3);border-bottom:.5px solid var(--ssp-border)}
-.ssp-pos-code{color:var(--ssp-text-3);font-size:11px}
-.ssp-pos-name{display:flex;align-items:center;gap:6px;min-width:0}
-.ssp-pos-name .ssp-mini-k{width:64px;margin-left:auto}
-.ssp-pos-dot{width:8px;height:8px;border-radius:2px;flex:none}
-.ssp-pos-price,.ssp-pos-tokens{text-align:right;font-variant-numeric:tabular-nums}
-.ssp-pos-chg{text-align:right}
-.ssp-pos-bar{display:block;height:6px;border-radius:3px;background:var(--ssp-hover);overflow:hidden}
-.ssp-pos-bar-fill{display:block;height:100%}
-.ssp-pos-cost{text-align:right;color:var(--ssp-text-3);font-variant-numeric:tabular-nums}
-.ssp-term-status{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--ssp-text-3);border-top:1px solid var(--ssp-border);padding-top:8px;flex-wrap:wrap}
-/* --- market tension: motion + structure (no extra copy) --- */
-@keyframes ssp-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
-@keyframes ssp-flash-up{0%{background:color-mix(in srgb,var(--up) 22%,transparent)}100%{background:transparent}}
-@keyframes ssp-flash-down{0%{background:color-mix(in srgb,var(--down) 22%,transparent)}100%{background:transparent}}
-@keyframes ssp-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes ssp-sweep{0%{transform:translateY(-100%);opacity:0}35%{opacity:.9}100%{transform:translateY(100%);opacity:0}}
-@keyframes ssp-mode-in{0%{opacity:0;transform:translateY(6px) scale(.995)}100%{opacity:1;transform:none}}
-.ssp-root{animation:ssp-mode-in .26s cubic-bezier(.22,.61,.36,1)}
-.ssp-live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--up);margin-right:5px;animation:ssp-pulse 1.4s ease-in-out infinite;vertical-align:1px}
-.ssp-term-ticker{position:relative;overflow:hidden;border:1px solid var(--ssp-border);border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--up) 6%,transparent),transparent 30%,transparent 70%,color-mix(in srgb,var(--down) 6%,transparent));height:24px;display:flex;align-items:center}
-.ssp-term-ticker::before,.ssp-term-ticker::after{content:"";position:absolute;top:0;bottom:0;width:24px;z-index:2;pointer-events:none}
-.ssp-term-ticker::before{left:0;background:linear-gradient(90deg,var(--ssp-bg),transparent)}
-.ssp-term-ticker::after{right:0;background:linear-gradient(270deg,var(--ssp-bg),transparent)}
-.ssp-ticker-track{display:inline-flex;gap:22px;white-space:nowrap;padding-left:12px;animation:ssp-marquee 42s linear infinite;font-size:11px;font-variant-numeric:tabular-nums;color:var(--ssp-text-2)}
-.ssp-ticker-item{display:inline-flex;align-items:baseline;gap:5px}
-.ssp-ticker-code{color:var(--ssp-text-3);font-size:10px}
-.ssp-ticker-up{color:var(--up)}
-.ssp-ticker-down{color:var(--down)}
-.ssp-index{position:relative;overflow:hidden;transition:border-color .16s,box-shadow .16s,transform .16s}
-.ssp-index:hover{transform:translateY(-1px)}
-.ssp-index-active::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 12%,transparent),transparent 60%);pointer-events:none}
-.ssp-index-icon{width:12px;height:12px;flex:none;opacity:.75}
-.ssp-index-label{display:flex;align-items:center;gap:4px}
-.ssp-instrument-price-flash-up{animation:ssp-flash-up 1.1s ease-out}
-.ssp-instrument-price-flash-down{animation:ssp-flash-down 1.1s ease-out}
-.ssp-term-last-tag{fill:var(--ssp-bg)}
-.ssp-term-last-tag-text{font-size:10px;font-variant-numeric:tabular-nums;font-weight:600}
-.ssp-term-chart-card{position:relative;overflow:hidden}
-.ssp-term-chart-card::before{content:"";position:absolute;left:0;right:0;top:0;height:36%;background:linear-gradient(180deg,color-mix(in srgb,var(--ssp-text-1) 3%,transparent),transparent);pointer-events:none;animation:ssp-sweep 6.5s ease-in-out infinite}
-.ssp-term-grid-line{stroke-dasharray:2 4;opacity:.9}
-.ssp-tape-row{transition:background-color .18s}
-.ssp-tape-row:hover{background:var(--ssp-hover)}
-.ssp-watch-row{transition:background-color .16s,color .16s}
-.ssp-pos-row{transition:background-color .16s}
-.ssp-pos-row:hover{background:var(--ssp-hover)}
-@media (prefers-reduced-motion:reduce){.ssp-root,.ssp-ticker-track,.ssp-live-dot,.ssp-term-chart-card::before{animation:none}.ssp-index:hover{transform:none}}
-.ssp-term-chart-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 0;color:var(--ssp-text-3)}
-.ssp-term-chart-empty-ring{width:64px;height:64px;border-radius:50%;border:6px solid var(--ssp-border)}
-.ssp-term-empty{padding:18px;color:var(--ssp-text-3);font-size:12px}
-.ssp-term-error{margin:8px 0;padding:10px 12px;border:1px solid var(--ssp-border);border-radius:10px;background:var(--ssp-hover);font-size:12px;display:flex;gap:12px;align-items:center}
-@media (max-width:1100px){.ssp-index-strip{grid-template-columns:repeat(3,minmax(0,1fr))}.ssp-term-grid{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:720px){.ssp-index-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.ssp-pos-row{grid-template-columns:52px minmax(0,1fr) 70px 56px 70px}.ssp-pos-share,.ssp-pos-cost{display:none}.ssp-watch-row{grid-template-columns:48px minmax(0,1fr) 60px 60px 56px}.ssp-watch-cost{display:none}}
+/* ---- entrance motion ---- */
+@keyframes ssp-mode-in{0%{opacity:0;transform:translateY(6px) scale(.995)}100%{opacity:1;transform:none}}
+.ssp-root{animation:ssp-mode-in .26s cubic-bezier(.22,.61,.36,1)}
 
 `;
 		if (
@@ -339,7 +307,7 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 		const PANEL_ID = "session-stats-panel";
 		const WINDOW_KEYS = ["24h", "7d", "14d", "30d"];
 		const zh = {
-			"panel": "会话统计",
+			"panel": "肥鱼用量分析",
 			"window.aria": "统计时间范围",
 			"window.24h": "近 24 小时",
 			"window.7d": "近 7 天",
@@ -417,63 +385,6 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			"costDonut.sub": "按模型 · 含官方搜索",
 			"donut.sub": "按模型",
 			"chart.other": "其他",
-			"terminal.sub": "SESSION TERMINAL",
-			"chart.bars": "堆叠柱",
-			"chart.candles": "蜡烛",
-			"chart.title": "行情走势",
-			"chart.aria": "行情图",
-			"chart.volume": "成交量（调用次数）",
-			"chart.stacked": "按模型堆叠",
-			"view.aria": "图表形态",
-			"mode.aria": "视图模式",
-			"mode.stats": "统计",
-			"mode.terminal": "K线",
-			"priceMode.aria": "价格口径",
-			"priceMode.tokens": "tokens/分",
-			"priceMode.cost": "¥/分",
-			"unit.tokenRate": "tokens/分",
-			"unit.costRate": "¥/分",
-			"index.aria": "指数",
-			"index.tokens": "总消耗",
-			"index.cost": "预估成本",
-			"index.sessions": "会话数",
-			"index.cacheHit": "缓存命中率",
-			"index.search": "官方搜索",
-			"stats.open": "今开",
-			"stats.high": "最高",
-			"stats.low": "最低",
-			"stats.avg": "均价",
-			"stats.amplitude": "振幅",
-			"term.open": "开",
-			"term.high": "高",
-			"term.low": "低",
-			"term.close": "收",
-			"term.chg": "涨跌",
-			"term.total": "总量",
-			"term.cost": "花费",
-			"term.calls": "调用",
-			"term.sessions": "会话",
-			"term.hit": "命中",
-			"term.priceTable": "官方价目",
-			"watch.title": "自选行情",
-			"watch.sub": "按模型 · 点击切换主图",
-			"watch.all": "全部模型",
-			"watch.allPrice": "综合",
-			"tape.title": "成交流水",
-			"tape.sub": "最近 20 条",
-			"tape.empty": "暂无成交",
-			"positions.title": "持仓明细",
-			"positions.sub": "按 tokens 降序",
-			"positions.colCode": "代码",
-			"positions.colName": "名称",
-			"positions.colPrice": "现价",
-			"positions.colChg": "涨跌",
-			"positions.colShare": "占比",
-			"positions.colCost": "成本",
-			"status.data": "行情数据",
-			"status.sessions": "个会话",
-			"status.sampled": "采样",
-			"state.receiving": "正在接收行情数据…",
 			"models.title": "分模型明细",
 			"models.sub": "按 token 降序",
 			"models.colModel": "模型",
@@ -488,9 +399,56 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			"state.error": "统计数据加载失败：{message}",
 			"state.retry": "重试",
 			"state.placeholder": "—",
+			"state.analyzing": "分析中",
+			"state.loading": "加载中",
+			"state.emptyChunk": "数据暂不可用",
+			"state.heavyStale": "慢数据刷新失败：{message} · 卡片显示的是上一次结果",
+			"today.title": "今日概览",
+			"today.sub": "按自然日 · 对比昨日",
+			"today.delta": "{arrow} {value}",
+			"forecast.caption": "虚线为成本走势预测",
+			"forecast.end": "月末 {cost}/天 ±{sigma}",
+			"forecast.title": "成本预测",
+			"heatmap.title": "热力日历",
+			"heatmap.sub": "最近 8 周 · 每天的活动强度",
+			"heatmap.aria": "热力日历指标",
+			"heatmap.mode.tokens": "Tokens",
+			"heatmap.mode.sessions": "会话",
+			"heatmap.less": "少",
+			"heatmap.more": "多",
+			"heatmap.cell": "{date} · {tokens} tokens · {sessions} 个会话 · {turns} turns",
+			"heatmap.empty": "暂无活动数据",
+			"rank.tools": "工具排行",
+			"rank.sub.tools": "按调用次数 · Top 10",
+			"rank.commands": "命令排行",
+			"rank.sub.commands": "Shell 程序口径 · Top 10",
+			"rank.skills": "技能排行",
+			"rank.sub.skills": "技能调用 · Top 10",
+			"rank.empty": "暂无数据",
+			"rank.ratePart": "成功率 {value}",
+			"rank.avgPart": "平均 {value}",
+			"rank.errorPart": "失败 {count} 次",
+			"sessions.title": "会话列表",
+			"sessions.sub": "最近活动 · 显示 {shown} / {total}",
+			"sessions.search": "搜索标题或最后一条 prompt",
+			"sessions.sortAria": "排序方式",
+			"sessions.sort.recent": "最近活动",
+			"sessions.sort.tokens": "Tokens",
+			"sessions.sort.cost": "成本",
+			"sessions.withSubagents": "包含子会话",
+			"sessions.empty": "没有匹配的会话",
+			"sessions.untitled": "未命名会话",
+			"sessions.subagentTag": "子会话",
+			"sessions.archivedTag": "已归档",
+			"sessions.turns": "{count} turns",
+			"sessions.steps": "{count} steps",
+			"time.justNow": "刚刚",
+			"time.minutes": "{count} 分钟前",
+			"time.hours": "{count} 小时前",
+			"time.days": "{count} 天前",
 		};
 		const en = {
-			"panel": "Session stats",
+			"panel": "Fat Fish Usage",
 			"window.aria": "Statistics time range",
 			"window.24h": "Last 24 hours",
 			"window.7d": "Last 7 days",
@@ -568,63 +526,6 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			"costDonut.sub": "By model · incl. official search",
 			"donut.sub": "By model",
 			"chart.other": "Other",
-			"terminal.sub": "SESSION TERMINAL",
-			"chart.bars": "Bars",
-			"chart.candles": "Candles",
-			"chart.title": "Price action",
-			"chart.aria": "Market chart",
-			"chart.volume": "Volume (calls)",
-			"chart.stacked": "Stacked by model",
-			"view.aria": "Chart form",
-			"mode.aria": "View mode",
-			"mode.stats": "Stats",
-			"mode.terminal": "K-line",
-			"priceMode.aria": "Price basis",
-			"priceMode.tokens": "tokens/min",
-			"priceMode.cost": "¥/min",
-			"unit.tokenRate": "tokens/min",
-			"unit.costRate": "¥/min",
-			"index.aria": "Indices",
-			"index.tokens": "Total tokens",
-			"index.cost": "Est. cost",
-			"index.sessions": "Sessions",
-			"index.cacheHit": "Cache hit",
-			"index.search": "Official search",
-			"stats.open": "Open",
-			"stats.high": "High",
-			"stats.low": "Low",
-			"stats.avg": "Avg",
-			"stats.amplitude": "Range",
-			"term.open": "O",
-			"term.high": "H",
-			"term.low": "L",
-			"term.close": "C",
-			"term.chg": "Chg",
-			"term.total": "Total",
-			"term.cost": "Cost",
-			"term.calls": "Calls",
-			"term.sessions": "Sessions",
-			"term.hit": "Hit",
-			"term.priceTable": "Price list",
-			"watch.title": "Watchlist",
-			"watch.sub": "By model · click to focus",
-			"watch.all": "All models",
-			"watch.allPrice": "Combined",
-			"tape.title": "Time & sales",
-			"tape.sub": "Latest 20",
-			"tape.empty": "No activity yet",
-			"positions.title": "Positions",
-			"positions.sub": "Sorted by tokens",
-			"positions.colCode": "Code",
-			"positions.colName": "Name",
-			"positions.colPrice": "Last",
-			"positions.colChg": "Chg",
-			"positions.colShare": "Share",
-			"positions.colCost": "Cost",
-			"status.data": "Market data",
-			"status.sessions": "sessions",
-			"status.sampled": "sampled",
-			"state.receiving": "Receiving market data…",
 			"models.title": "Models",
 			"models.sub": "Sorted by tokens",
 			"models.colModel": "Model",
@@ -639,6 +540,53 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			"state.error": "Failed to load statistics: {message}",
 			"state.retry": "Retry",
 			"state.placeholder": "—",
+			"state.analyzing": "Analyzing",
+			"state.loading": "Loading",
+			"state.emptyChunk": "Data unavailable",
+			"state.heavyStale": "Slow data refresh failed: {message} · cards still show the previous result",
+			"today.title": "Today",
+			"today.sub": "Calendar day · vs yesterday",
+			"today.delta": "{arrow} {value}",
+			"forecast.caption": "Dashed line: cost trend forecast",
+			"forecast.end": "Month end {cost}/day ±{sigma}",
+			"forecast.title": "Cost forecast",
+			"heatmap.title": "Activity calendar",
+			"heatmap.sub": "Last 8 weeks · daily activity",
+			"heatmap.aria": "Calendar metric",
+			"heatmap.mode.tokens": "Tokens",
+			"heatmap.mode.sessions": "Sessions",
+			"heatmap.less": "Less",
+			"heatmap.more": "More",
+			"heatmap.cell": "{date} · {tokens} tokens · {sessions} sessions · {turns} turns",
+			"heatmap.empty": "No activity yet",
+			"rank.tools": "Tool leaderboard",
+			"rank.sub.tools": "By calls · Top 10",
+			"rank.commands": "Command leaderboard",
+			"rank.sub.commands": "Shell programs · Top 10",
+			"rank.skills": "Skill leaderboard",
+			"rank.sub.skills": "Skill calls · Top 10",
+			"rank.empty": "No data yet",
+			"rank.ratePart": "Success {value}",
+			"rank.avgPart": "Avg {value}",
+			"rank.errorPart": "{count} errors",
+			"sessions.title": "Sessions",
+			"sessions.sub": "Most recent · {shown} of {total}",
+			"sessions.search": "Search title or last prompt",
+			"sessions.sortAria": "Sort by",
+			"sessions.sort.recent": "Recent",
+			"sessions.sort.tokens": "Tokens",
+			"sessions.sort.cost": "Cost",
+			"sessions.withSubagents": "Include subagent sessions",
+			"sessions.empty": "No matching sessions",
+			"sessions.untitled": "Untitled session",
+			"sessions.subagentTag": "Sub",
+			"sessions.archivedTag": "Archived",
+			"sessions.turns": "{count} turns",
+			"sessions.steps": "{count} steps",
+			"time.justNow": "just now",
+			"time.minutes": "{count}m ago",
+			"time.hours": "{count}h ago",
+			"time.days": "{count}d ago",
 		};
 		//#endregion
 
@@ -685,14 +633,61 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			const number = Number(value);
 			return Number.isFinite(number) ? String(Math.round(number)) : "0";
 		}
+		/**
+		 * Relative time for the session list: 刚刚 / 5 分钟前 / 3 小时前 / 2 天前 / 10/28.
+		 * A future or unknown timestamp degrades to the placeholder instead of a
+		 * negative duration.
+		 * @param {Function} t - translator.
+		 * @param {number} nowMs - reference instant (the heavy payload's generatedAt).
+		 * @param {number} thenMs - target instant.
+		 * @returns {string} localized relative label.
+		 */
+		function formatRelative(t, nowMs, thenMs) {
+			const then = Number(thenMs);
+			if (!Number.isFinite(then) || then <= 0) return "--";
+			const now = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+			const delta = now - then;
+			if (delta < 60_000) return t("time.justNow");
+			const minutes = Math.floor(delta / 60_000);
+			if (minutes < 60) return t("time.minutes", { count: minutes });
+			const hours = Math.floor(minutes / 60);
+			if (hours < 24) return t("time.hours", { count: hours });
+			const days = Math.floor(hours / 24);
+			if (days < 30) return t("time.days", { count: days });
+			const date = new Date(then);
+			return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
+		}
 		//#endregion
 
 		//#region data hooks
 		const OVERVIEW_URL = "/session-stats/api/overview";
+		const HEAVY_URL = "/session-stats/api/heavy";
 		const LIVE_URL = "/session-stats/api/live";
 
-		/** Fetch the window overview; keeps the last good payload while refreshing. */
-		function useOverview(windowKey, reloadKey) {
+		/** Read an array field off a payload that may be absent or malformed. */
+		function arrayOf(payload, key) {
+			return payload !== null && payload !== undefined && Array.isArray(payload[key]) ? payload[key] : [];
+		}
+
+		/** Append the selected window to an API path; a null selection asks for the host default. */
+		function withWindow(path, windowKey) {
+			return windowKey === null || windowKey === undefined ? path : `${path}?window=${encodeURIComponent(windowKey)}`;
+		}
+
+		/**
+		 * Fetch one JSON chunk with cancel and stale protection.
+		 *
+		 * `data` survives a refetch, so a window switch keeps the previous charts
+		 * on screen instead of blinking to placeholders. `status` is `loading` on
+		 * the first load, `refreshing` while an old payload is still shown, and
+		 * `ready` / `error` once the request settles. The in-flight request is
+		 * aborted when the URL changes or the view unmounts, so a slow response for
+		 * the previous window can never overwrite the newer one.
+		 * @param {string} url - endpoint path including any query string.
+		 * @param {number} reloadKey - bump to force a refetch of the same URL.
+		 * @returns {{status: string, data: object|null, error: string|null}} chunk state.
+		 */
+		function useFetch(url, reloadKey) {
 			const [state, setState] = react.useState({ status: "loading", data: null, error: null });
 			react.useEffect(() => {
 				let alive = true;
@@ -702,11 +697,6 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 					data: previous.data,
 					error: null,
 				}));
-				// A null selection asks the host for its configured default window.
-				const url =
-					windowKey === null || windowKey === undefined
-						? OVERVIEW_URL
-						: `${OVERVIEW_URL}?window=${encodeURIComponent(windowKey)}`;
 				fetch(url, {
 					cache: "no-store",
 					headers: { accept: "application/json" },
@@ -735,8 +725,18 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 					alive = false;
 					if (controller !== null) controller.abort();
 				};
-			}, [windowKey, reloadKey]);
+			}, [url, reloadKey]);
 			return state;
+		}
+
+		/** Fast chunk: metric cards, daily bars, compositions, model detail. */
+		function useOverview(windowKey, reloadKey) {
+			return useFetch(withWindow(OVERVIEW_URL, windowKey), reloadKey);
+		}
+
+		/** Slow chunk: heatmap, leaderboards and the session list. */
+		function useHeavy(windowKey, reloadKey) {
+			return useFetch(withWindow(HEAVY_URL, windowKey), reloadKey);
 		}
 
 		/** Poll the live process snapshot every 5 seconds while mounted. */
@@ -851,25 +851,55 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				}),
 			);
 		}
-		/** Sidebar glyph: ascending bars, drawn at the size the sidebar asks for. */
+		/**
+		 * The pixel blue whale (B2: connected tail fin, mouth line, side fin and a
+		 * three-pixel spout), one rect per pixel — see `_notes/design/whale-b2.svg`.
+		 * `pixels` lists each sprite cell as `x,y`; the authoring grid is 16x16.
+		 */
+		const WHALE_SPRITE = [
+			{ fill: "#74c0fc", pixels: "4,3 6,3 5,4 4,11 5,11 5,12" },
+			{
+				fill: "#1c7ed6",
+				pixels:
+					"4,5 5,5 6,5 7,5 2,6 3,6 4,6 5,6 6,6 7,6 8,6 9,6 1,7 2,7 3,7 4,7 5,7 6,7 7,7 8,7 9,7 10,7 0,8 1,8 4,8 5,8 6,8 7,8 8,8 9,8 10,8 0,9 1,9 4,9 5,9 6,9 7,9 8,9 9,9 10,9 0,10 4,10 5,10 6,10 7,10 8,10 9,10 10,10",
+			},
+			{ fill: "#1971c2", pixels: "12,7 13,7 11,8 12,8 11,9 1,10 2,10 3,10 11,10 11,11 12,11 12,12 13,12" },
+			{ fill: "#0b2447", pixels: "2,8" },
+			{ fill: "#ffffff", pixels: "3,8 2,9 3,9" },
+			{ fill: "#a5d8ff", pixels: "1,11 2,11 3,11 6,11 7,11 8,11 9,11 10,11 2,12 3,12 4,12 6,12 7,12 8,12 9,12 4,13 5,13 6,13 7,13" },
+		];
+
+		/**
+		 * Sidebar glyph: the pixel blue whale.
+		 *
+		 * The sprite lives on a 16-unit grid, so only whole multiples of 16 give
+		 * every cell an integer number of CSS pixels. The sidebar asks for ~18px,
+		 * where cells would alternate between 1px and 2px and the sprite turns
+		 * uneven; snapping down to 16 keeps it square. Larger slots round down to
+		 * the nearest multiple instead of overflowing.
+		 */
 		function SessionStatsIcon({ size }) {
-			const edge = typeof size === "number" && size > 0 ? size : 16;
+			const requested = typeof size === "number" && Number.isFinite(size) ? size : 16;
+			const edge = requested >= 32 ? Math.floor(requested / 16) * 16 : 16;
+			const pixels = [];
+			for (const group of WHALE_SPRITE) {
+				for (const cell of group.pixels.split(" ")) {
+					const [x, y] = cell.split(",");
+					pixels.push(h("rect", { key: `${group.fill}/${cell}`, x: Number(x), y: Number(y), width: 1, height: 1, fill: group.fill }));
+				}
+			}
 			return h(
 				"svg",
 				{
 					width: edge,
 					height: edge,
 					viewBox: "0 0 16 16",
-					fill: "none",
+					shapeRendering: "crispEdges",
 					"aria-hidden": "true",
 					focusable: "false",
+					style: { display: "block" },
 				},
-				h("path", {
-					d: "M3 13.2V9.3M6.33 13.2V5.4M9.66 13.2V7.5M13 13.2V3.4",
-					stroke: "currentColor",
-					strokeWidth: 1.4,
-					strokeLinecap: "round",
-				}),
+				pixels,
 			);
 		}
 		//#endregion
@@ -895,6 +925,74 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				note === null || note === undefined
 					? null
 					: h("div", { className: "ssp-sub-note", title: noteTitle ?? undefined }, note),
+			);
+		}
+
+		/** Signed delta chip: ▲ red on growth, ▼ green on decline, -- without a baseline. */
+		function DeltaChip({ t, current, previous }) {
+			const now = Number(current);
+			const before = Number(previous);
+			if (!Number.isFinite(now) || !Number.isFinite(before) || before <= 0) {
+				return h("span", { className: "ssp-today-delta ssp-today-flat" }, "--");
+			}
+			const ratio = (now - before) / before;
+			if (!Number.isFinite(ratio)) return h("span", { className: "ssp-today-delta ssp-today-flat" }, "--");
+			if (Math.abs(ratio) < 0.0005) return h("span", { className: "ssp-today-delta ssp-today-flat" }, formatPercent(0));
+			const up = ratio > 0;
+			return h(
+				"span",
+				{ className: `ssp-today-delta ${up ? "ssp-today-up" : "ssp-today-down"}` },
+				t("today.delta", { arrow: up ? "▲" : "▼", value: formatPercent(Math.abs(ratio)) }),
+			);
+		}
+
+		/**
+		 * Calendar-day stripe: today's four headline numbers next to their change
+		 * against yesterday.
+		 *
+		 * `today === undefined` means the host does not ship the field yet, so the
+		 * stripe is omitted entirely; `today === null` means the host has the field
+		 * but no activity today, which is a normal state and renders as a hint, not
+		 * as an error.
+		 */
+		function TodayBar({ t, data, currency, symbol, usdRate, placeholder }) {
+			const snapshot = data !== null && data !== undefined ? data.today : undefined;
+			if (snapshot === undefined) return null;
+			// A day without activity keeps the four-cell layout and shows a dash for
+			// every value and every comparison, so nothing on screen jumps.
+			if (snapshot === null) {
+				return h(
+					"section",
+					{ className: "ssp-card ssp-today", "aria-label": t("today.title") },
+					["card.tokens", "card.cost", "card.sessions", "card.cache"].map((key) =>
+						h(
+							"div",
+							{ className: "ssp-today-cell", key },
+							h("div", { className: "ssp-today-label" }, t(key)),
+							h("div", { className: "ssp-today-value" }, placeholder, h("span", { className: "ssp-today-delta ssp-today-flat" }, "--")),
+						),
+					),
+				);
+			}
+			const previous = data.yesterday === undefined ? null : data.yesterday;
+			const costOf = (entry) => (entry === null || entry === undefined ? null : displayMoney(entry.costCNY, currency, usdRate));
+			const cells = [
+				{ key: "tokens", label: t("card.tokens"), text: formatTokens(snapshot.tokens), current: snapshot.tokens, before: previous === null ? null : previous.tokens },
+				{ key: "cost", label: t("card.cost"), text: `${symbol}${formatMoney(costOf(snapshot))}`, current: costOf(snapshot), before: costOf(previous) },
+				{ key: "sessions", label: t("card.sessions"), text: String(Number(snapshot.sessions) || 0), current: snapshot.sessions, before: previous === null ? null : previous.sessions },
+				{ key: "cache", label: t("card.cache"), text: formatPercent(snapshot.cacheHitRate), current: snapshot.cacheHitRate, before: previous === null ? null : previous.cacheHitRate },
+			];
+			return h(
+				"section",
+				{ className: "ssp-card ssp-today", "aria-label": t("today.title") },
+				cells.map((cell) =>
+					h(
+						"div",
+						{ className: "ssp-today-cell", key: cell.key },
+						h("div", { className: "ssp-today-label" }, cell.label),
+						h("div", { className: "ssp-today-value" }, cell.text, h(DeltaChip, { t, current: cell.current, previous: cell.before })),
+					),
+				),
 			);
 		}
 
@@ -1176,9 +1274,20 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 			return h("span", { className, style: { background: color }, "aria-hidden": "true" });
 		}
 
-		function DailyCard({ t, data, currency, symbol, placeholder, windowKey, models, otherLabel, otherColor, limit }) {
+		/** Convert a CNY amount into the display currency (CNY is the authoritative figure). */
+		function displayMoney(valueCNY, currency, usdRate) {
+			const amount = Number(valueCNY) || 0;
+			if (currency !== "USD") return amount;
+			const rate = Number(usdRate) > 0 ? Number(usdRate) : 7.1;
+			return amount / rate;
+		}
+
+		function DailyCard({ t, data, currency, symbol, placeholder, windowKey, models, otherLabel, otherColor, limit, granularity, usdRate }) {
 			const daily = data !== null && Array.isArray(data.daily) ? data.daily : [];
 			const totals = data !== null && data.totals ? data.totals : null;
+			// The caption must describe the bucket the bars come from, not the tab the
+			// user just clicked: during a window switch `data` is still the old window.
+			const rangeKey = data !== null && data.window && data.window.key ? data.window.key : windowKey;
 			const total = totals === null ? 0 : Number(totals.tokens) || 0;
 			const series = buildModelSeries(models, { limit, otherLabel, otherColor, total });
 			const routeToSeries = seriesKeyByRoute(series);
@@ -1253,6 +1362,34 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 						h("span", { className: "ssp-legend-value" }, formatPercent(entry.share)),
 					),
 				);
+			// The forecast (IDEA-01) is a daily-cost trend, so an hourly window has
+			// no meaningful day axis to hang it on; it renders for day granularity
+			// only and hides itself when the host has too little history to fit.
+			const showForecast =
+				granularity === "day" &&
+				data !== null &&
+				data.forecast !== null &&
+				data.forecast !== undefined &&
+				Number.isFinite(Number(data.forecast.monthEndEstimate)) &&
+				daily.length > 0;
+			const rate = Number(usdRate) > 0 ? Number(usdRate) : 7.1;
+			let forecastToday = 0;
+			let forecastEnd = 0;
+			let forecastSigma = 0;
+			let forecastScale = 1;
+			if (showForecast) {
+				// The fit regresses the last 30 days with x = 29 for today, so today's
+				// fitted daily cost is intercept + slope * 29.
+				forecastToday = displayMoney(Number(data.forecast.intercept) + Number(data.forecast.slope) * 29, currency, rate);
+				forecastEnd = displayMoney(data.forecast.monthEndEstimate, currency, rate);
+				forecastSigma = displayMoney(data.forecast.sigma, currency, rate);
+				let costPeak = 0;
+				for (const point of daily) costPeak = Math.max(costPeak, displayMoney(point.costCNY, currency, rate));
+				forecastScale = Math.max(costPeak, forecastToday, forecastEnd, 0.0001);
+			}
+			// y grows downwards inside the 0..100 viewBox. The tail is a compressed
+			// projection strip, so it only has to convey the direction of travel.
+			const forecastY = (value) => (100 - Math.min(100, Math.max(0, (value / forecastScale) * 100))).toFixed(2);
 			return h(
 				"section",
 				{ className: "ssp-card", "aria-label": t("daily.title") },
@@ -1263,7 +1400,7 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 						"div",
 						null,
 						h("div", { className: "ssp-card-title" }, t("daily.title")),
-						h("div", { className: "ssp-card-sub" }, t("daily.sub", { range: t("window." + windowKey) })),
+						h("div", { className: "ssp-card-sub" }, t("daily.sub", { range: t("window." + rangeKey) })),
 					),
 					h(
 						"div",
@@ -1282,14 +1419,42 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				),
 				h(
 					"div",
-					{ className: "ssp-bars", "data-dense": dense ? "true" : "false" },
-					bars.length > 0
-						? bars
-						: Array.from({ length: 7 }, (_, index) =>
-								h("div", { className: "ssp-bar-col", key: "empty-" + index }, h("div", { className: "ssp-bar ssp-bar-empty" })),
-							),
+					{ className: "ssp-chart-wrap" },
+					h(
+						"div",
+						{ className: "ssp-bars-wrap" },
+						h(
+							"div",
+							{ className: "ssp-bars", "data-dense": dense ? "true" : "false" },
+							bars.length > 0
+								? bars
+								: Array.from({ length: 7 }, (_, index) =>
+										h("div", { className: "ssp-bar-col", key: "empty-" + index }, h("div", { className: "ssp-bar ssp-bar-empty" })),
+									),
+						),
+						h("div", { className: "ssp-axis", "data-dense": dense ? "true" : "false" }, axis),
+					),
+					showForecast
+						? h(
+								"div",
+								{ className: "ssp-forecast", "data-testid": "ssp-forecast", "aria-label": t("forecast.title") },
+								h(
+									"svg",
+									{ viewBox: "0 0 100 100", preserveAspectRatio: "none", "aria-hidden": "true" },
+									h("line", { className: "ssp-forecast-line", x1: 0, y1: forecastY(forecastToday), x2: 100, y2: forecastY(forecastEnd) }),
+								),
+								h(
+									"span",
+									{ className: "ssp-forecast-text" },
+									t("forecast.end", {
+										cost: `${symbol}${formatMoney(forecastEnd)}`,
+										sigma: `${symbol}${formatMoney(forecastSigma)}`,
+									}),
+								),
+							)
+						: null,
 				),
-				h("div", { className: "ssp-axis", "data-dense": dense ? "true" : "false" }, axis),
+				showForecast ? h("div", { className: "ssp-card-sub ssp-forecast-caption" }, t("forecast.caption")) : null,
 				legend.length > 0 ? h("div", { className: "ssp-legend ssp-bar-legend" }, legend) : null,
 			);
 		}
@@ -1625,879 +1790,386 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 
 		//#endregion
 
-		//#region terminal
-		/** Beijing wall-clock HH:mm:ss for tape / status rows. */
-		/** Wall-clock HH:mm:ss; offsetMs comes from the host so non-CN viewers see their own day boundaries. */
-		function formatClock(timeMs, offsetMs = 8 * 3_600_000) {
-			const date = new Date(Number(timeMs) + Number(offsetMs));
-			const hh = String(date.getUTCHours()).padStart(2, "0");
-			const mm = String(date.getUTCMinutes()).padStart(2, "0");
-			const ss = String(date.getUTCSeconds()).padStart(2, "0");
-			return `${hh}:${mm}:${ss}`;
+		//#region heavy cards
+		/** 2px indeterminate bar pinned to the panel top while a chunk reloads. */
+		function ProgressBar({ t, active }) {
+			if (!active) return null;
+			return h(
+				"div",
+				{ className: "ssp-progress", role: "progressbar", "data-testid": "ssp-progress", "aria-label": t("state.loading") },
+				h("div", { className: "ssp-progress-fill" }),
+			);
 		}
 
-		/** Beijing wall-clock MM/DD HH:mm for candle ranges. */
-		function formatRange(startMs, periodMs, offsetMs = 8 * 3_600_000) {
-			const start = new Date(Number(startMs) + Number(offsetMs));
-			const end = new Date(Number(startMs) + Number(periodMs) + Number(offsetMs));
-			const pad = (value) => String(value).padStart(2, "0");
-			return `${pad(start.getUTCMonth() + 1)}/${pad(start.getUTCDate())} ${pad(start.getUTCHours())}:${pad(start.getUTCMinutes())}–${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
-		}
-
-		/** Signed percentage badge (red up / green down), or -- when unknown. */
-		function ChangeBadge({ t, value, className }) {
-			if (value === null || value === undefined || !Number.isFinite(Number(value))) {
-				return h("span", { className: "ssp-term-chg ssp-term-chg-flat" }, "--");
-			}
-			const number = Number(value);
-			const flat = Math.abs(number) < 0.0005;
-			const up = number > 0;
-			const arrow = flat ? "" : up ? "▲ " : "▼ ";
+		/** "分析中" plus three pulsing dots for cards whose chunk has not landed yet. */
+		function AnalyzingDots({ t }) {
 			return h(
 				"span",
-				{ className: `ssp-term-chg ${flat ? "ssp-term-chg-flat" : up ? "ssp-term-chg-up" : "ssp-term-chg-down"}${className ? " " + className : ""}` },
-				`${arrow}${formatPercent(Math.abs(number))}`,
+				{ className: "ssp-analyzing" },
+				h("span", null, t("state.analyzing")),
+				h("span", { className: "ssp-dot" }),
+				h("span", { className: "ssp-dot" }),
+				h("span", { className: "ssp-dot" }),
 			);
 		}
 
-		/** 12-point mini candlestick strip (pure SVG, no axes). */
-		function MiniK({ values, className }) {
-			const list = Array.isArray(values) && values.length > 0 ? values : [0, 0];
-			const width = 72;
-			const height = 22;
-			const max = Math.max(...list.map((value) => Number(value) || 0), 1);
-			const step = width / list.length;
-			const nodes = [];
-			for (let index = 0; index < list.length; index += 1) {
-				const value = Number(list[index]) || 0;
-				const previous = index === 0 ? value : Number(list[index - 1]) || 0;
-				const up = value >= previous;
-				const x = index * step + step / 2;
-				const bodyTop = height - (Math.max(value, previous) / max) * (height - 4) - 2;
-				const bodyBottom = height - (Math.min(value, previous) / max) * (height - 4) - 2;
-				const bodyHeight = Math.max(1, bodyBottom - bodyTop);
-				nodes.push(h("line", { key: `w${index}`, x1: x, x2: x, y1: 2, y2: height - 1, className: up ? "ssp-mini-wick-up" : "ssp-mini-wick-down" }));
-				nodes.push(h("rect", { key: `b${index}`, x: x - Math.max(1, step * 0.3), y: bodyTop, width: Math.max(1.5, step * 0.6), height: bodyHeight, className: up ? "ssp-mini-body-up" : "ssp-mini-body-down", rx: 0.5 }));
-			}
-			return h("svg", { className: `ssp-mini-k${className ? " " + className : ""}`, viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" }, nodes);
-		}
-
-		/** One index strip cell: label, value, change badge, mini K. */
-		/** Scrolling quote tape: the "market is alive" cue, built from data rather than copy. */
-		function Ticker({ t, indices, symbols, totalTokens }) {
-			const items = [];
-			for (const item of indices) {
-				const value = item.key === "cacheHit" ? formatPercent(item.value) : item.key === "cost" ? `¥${formatMoney(item.value)}` : formatTokens(item.value);
-				items.push({ code: t(`index.${item.key}`, { defaultValue: item.label }), value, chg: item.chgPct, up: (Number(item.chgPct) || 0) >= 0 });
-			}
-			for (const symbol of symbols.slice(0, 8)) {
-				items.push({ code: symbol.code, value: formatTokens(symbol.rate), chg: symbol.chgPct, up: (Number(symbol.chgPct) || 0) >= 0 });
-			}
-			items.push({ code: "VOL", value: formatTokens(totalTokens), chg: null, up: true });
-			if (items.length === 0) return null;
-			const row = (item, key) =>
-				h(
-					"span",
-					{ className: "ssp-ticker-item", key },
-					h("span", { className: "ssp-ticker-code" }, item.code),
-					h("span", null, item.value),
-					item.chg === null || item.chg === undefined ? null : h("span", { className: item.up ? "ssp-ticker-up" : "ssp-ticker-down" }, `${item.up ? "▲" : "▼"}${Math.abs(Number(item.chg) * 100).toFixed(1)}%`),
-				);
-			return h(
-				"div",
-				{ className: "ssp-term-ticker", "aria-hidden": "true" },
-				h("div", { className: "ssp-ticker-track" }, [...items.map((item, index) => row(item, "a" + index)), ...items.map((item, index) => row(item, "b" + index))]),
-			);
-		}
-
-		/** Tiny market glyphs: bars for volume, curve for price, dots for sessions, ring for cache, magnifier for search. */
-		function IndexIcon({ kind }) {
-			const stroke = { stroke: "currentColor", strokeWidth: 1.2, fill: "none", strokeLinejoin: "round", strokeLinecap: "round" };
-			const glyphs = {
-				tokens: h("g", null, h("path", { d: "M1 6h2v3H1zM4.5 3h2v6h-2zM8 5h2v4H8zM11.5 1.5h2v7.5h-2z", fill: "currentColor", stroke: "none" })),
-				cost: h("g", null, h("path", { d: "M2 4.5 8 1.5l6 3-6 3-6-3Z", ...stroke }), h("path", { d: "M2 8l6 3 6-3M2 11l6 3 6-3", ...stroke })),
-				sessions: h("g", null, h("circle", { cx: 5, cy: 5, r: 2.2, ...stroke }), h("path", { d: "M1.5 13c0-2 1.6-3.2 3.5-3.2S8.5 11 8.5 13", ...stroke }), h("path", { d: "M10 4.2a2 2 0 0 1 0 3.6M11.6 10.4c1.2.3 2 1.3 2 2.6", ...stroke })),
-				cacheHit: h("g", null, h("circle", { cx: 8, cy: 8, r: 5.4, ...stroke }), h("path", { d: "M8 4.6V8l2.4 1.6", ...stroke })),
-				search: h("g", null, h("circle", { cx: 7, cy: 7, r: 3.6, ...stroke }), h("path", { d: "M9.6 9.6 13.2 13.2", ...stroke })),
-			};
-			return h("svg", { className: "ssp-index-icon", viewBox: "0 0 16 16", "aria-hidden": "true", focusable: "false" }, glyphs[kind] ?? glyphs.tokens);
-		}
-
-		function IndexCell({ t, item, selected, onSelect }) {
-			const value = item.key === "cacheHit" ? formatPercent(item.value) : item.key === "cost" ? `¥${formatMoney(item.value)}` : formatTokens(item.value);
-			const unit = item.key === "cacheHit" ? "" : item.unit === "tokens" ? "tokens" : item.unit === "¥" ? "" : item.unit;
-			return h(
-				"button",
-				{
-					type: "button",
-					className: `ssp-index${selected ? " ssp-index-active" : ""}`,
-					onClick: () => onSelect(item.key),
-					"aria-pressed": selected ? "true" : "false",
-				},
-				h("span", { className: "ssp-index-label" }, h(IndexIcon, { kind: item.key }), t(`index.${item.key}`, { defaultValue: item.label })),
-				h(
-					"span",
-					{ className: "ssp-index-row" },
-					h("span", { className: "ssp-index-value" }, value),
-					unit === "" ? null : h("span", { className: "ssp-index-unit" }, unit),
-				),
-				h(ChangeBadge, { t, value: item.chgPct }),
-				h(MiniK, { values: item.spark }),
-			);
-		}
-
-		/** Instrument header: current rate, change, and the five summary stats. */
-		function InstrumentHeader({ t, title, unit, price, chgPct, stats }) {
-			return h(
-				"section",
-				{ className: "ssp-instrument" },
-				h(
-					"div",
-					{ className: "ssp-instrument-main" },
-					h("div", { className: "ssp-instrument-name" }, title),
-					h(
-						"div",
-						{ className: "ssp-instrument-price-row" },
-						h("span", { className: "ssp-instrument-price" }, price),
-						h("span", { className: "ssp-instrument-unit" }, unit),
-						h(ChangeBadge, { t, value: chgPct, className: "ssp-instrument-chg" }),
-					),
-				),
-				h(
-					"div",
-					{ className: "ssp-instrument-stats" },
-					stats.map((stat) =>
-						h(
-							"div",
-							{ className: "ssp-instrument-stat", key: stat.key },
-							h("span", { className: "ssp-instrument-stat-label" }, t(`stats.${stat.key}`)),
-							h("span", { className: "ssp-instrument-stat-value" }, stat.value),
-						),
-					),
-				),
-			);
+		/** Placeholder body shared by the heavy cards while their chunk is on the wire. */
+		function PendingBody({ t, text }) {
+			return h("div", { className: "ssp-quiet" }, text === null ? h(AnalyzingDots, { t }) : text);
 		}
 
 		/**
-		 * Merge consecutive buckets so a bar series fits the available width.
+		 * Body text for a card whose chunk is missing.
 		 *
-		 * Bar mode is a magnitude comparison, so a period that was merged must add
-		 * its tokens/calls up rather than discard them; candles keep the raw
-		 * buckets because OHLC would lose meaning under merging.
-		 * @param {object[]} bars - raw candle buckets.
-		 * @param {number} target - approximate number of bars to keep.
-		 * @returns {object[]} merged buckets.
+		 * Three states read differently: a request still in flight gets the
+		 * animated "analyzing" hint (null), a successful but empty payload gets the
+		 * card's own empty copy, and a failed request (404 on an old host, say) gets
+		 * a neutral "data unavailable" instead of pretending there is no activity.
+		 * @returns {string|null} null means "show the analyzing dots".
 		 */
-		function mergeBars(bars, target) {
-			const list = Array.isArray(bars) ? bars : [];
-			if (list.length <= target || target < 1) return list;
-			const groupSize = Math.ceil(list.length / target);
-			const out = [];
-			for (let index = 0; index < list.length; index += groupSize) {
-				const group = list.slice(index, index + groupSize);
-				const merged = { t: group[0].t, tokens: 0, costCNY: 0, calls: 0, sessions: 0, vol: 0, empty: true, byModel: [] };
-				const byModel = new Map();
-				let tokenSum = 0;
-				let cacheWeighted = 0;
-				for (const bar of group) {
-					const tokens = Number(bar.tokens) || 0;
-					merged.tokens += tokens;
-					merged.costCNY += Number(bar.costCNY) || 0;
-					merged.calls += Number(bar.calls) || 0;
-					merged.sessions += Number(bar.sessions) || 0;
-					merged.vol += Number(bar.vol) || 0;
-					tokenSum += tokens;
-					cacheWeighted += (Number(bar.cacheHit) || 0) * tokens;
-					if (!bar.empty) merged.empty = false;
-					for (const segment of Array.isArray(bar.byModel) ? bar.byModel : []) {
-						byModel.set(segment.route, (byModel.get(segment.route) ?? 0) + (Number(segment.tokens) || 0));
-					}
-				}
-				merged.byModel = [...byModel].map(([route, tokens]) => ({ route, tokens })).sort((a, b) => b.tokens - a.tokens);
-				merged.cacheHit = tokenSum > 0 ? cacheWeighted / tokenSum : 0;
-				merged.o = merged.tokens;
-				merged.h = merged.tokens;
-				merged.l = merged.tokens;
-				merged.c = merged.tokens;
-				out.push(merged);
-			}
-			return out;
+		function chunkFallback(t, state, emptyText) {
+			if (state === "error") return t("state.emptyChunk");
+			if (state === "ready") return emptyText;
+			return null;
 		}
 
-		/**
-		 * Merge consecutive buckets into real OHLC candles.
-		 *
-		 * Merging must preserve candle semantics: open is the group's first open,
-		 * close is the group's last close, high/low are the extremes. Empty buckets
-		 * are dropped instead of being carried forward at the previous close, which
-		 * is what turned long quiet stretches into flat plateaus.
-		 * @param {object[]} bars - raw buckets (may contain empty ones).
-		 * @param {number} target - approximate candle count to keep.
-		 * @returns {object[]} merged candles.
-		 */
-		function mergeCandles(bars, target) {
-			const source = Array.isArray(bars) ? bars : [];
-			if (source.length === 0) return [];
-			if (source.length <= target || target < 1) return source;
-			// Group by wall clock, not by "how many non-empty bars are left": the
-			// x axis must stay linear in time, so a quiet stretch keeps its slot.
-			const groupSize = Math.max(1, Math.ceil(source.length / target));
-			const out = [];
-			for (let index = 0; index < source.length; index += groupSize) {
-				const group = source.slice(index, index + groupSize);
-				const active = group.filter((bar) => !bar.empty);
-				if (active.length === 0) {
-					out.push({ t: group[0].t, o: 0, h: 0, l: 0, c: 0, tokens: 0, costCNY: 0, calls: 0, sessions: 0, vol: 0, cacheHit: 0, byModel: [], empty: true });
-					continue;
-				}
-				const live = active;
-				const byModel = new Map();
-				let tokens = 0;
-				let costCNY = 0;
-				let calls = 0;
-				let sessions = 0;
-				let cacheWeighted = 0;
-				let high = -Infinity;
-				let low = Infinity;
-				for (const bar of live) {
-					high = Math.max(high, Number(bar.h) || 0);
-					low = Math.min(low, Number(bar.l) || 0);
-					tokens += Number(bar.tokens) || 0;
-					costCNY += Number(bar.costCNY) || 0;
-					calls += Number(bar.calls) || 0;
-					sessions += Number(bar.sessions) || 0;
-					cacheWeighted += (Number(bar.cacheHit) || 0) * (Number(bar.tokens) || 0);
-					for (const segment of Array.isArray(bar.byModel) ? bar.byModel : []) {
-						byModel.set(segment.route, (byModel.get(segment.route) ?? 0) + (Number(segment.tokens) || 0));
-					}
-				}
-				out.push({
-					t: group[0].t,
-					o: Number(live[0].o) || 0,
-					h: high === -Infinity ? 0 : high,
-					l: low === Infinity ? 0 : low,
-					c: Number(live[live.length - 1].c) || 0,
-					tokens,
-					costCNY,
-					calls,
-					sessions,
-					vol: calls,
-					cacheHit: tokens > 0 ? cacheWeighted / tokens : 0,
-					byModel: [...byModel].map(([route, value]) => ({ route, tokens: value })).sort((a, b) => b.tokens - a.tokens),
-					empty: false,
-				});
-			}
-			return out;
-		}
-
-		/** Main chart: candlesticks or stacked bars + MA lines + volume + crosshair. */
-		function TerminalChart({ t, bars, view, priceMode, period, periodMs, models, hover, onHover, placeholder, offsetMs = 8 * 3_600_000 }) {
-			const list = Array.isArray(bars) ? bars : [];
-			const width = 1000;
-			const height = 420;
-			const left = 8;
-			const right = 72;
-			const priceTop = 10;
-			const priceBottom = 300;
-			const volumeTop = 322;
-			const volumeBottom = 404;
-			const plotWidth = width - left - right;
-			if (list.length === 0) {
-				return h(
-					"div",
-					{ className: "ssp-term-chart-empty" },
-					h("div", { className: "ssp-term-chart-empty-ring" }),
-					h("div", { className: "ssp-card-sub" }, placeholder),
-				);
-			}
-			const colorByRoute = new Map((Array.isArray(models) ? models : []).map((model) => [model.route, model.color]));
-			const isBars = view === "bars";
-			const priced = list.map((bar) => {
-				const factor = priceMode === "cost" && bar.tokens > 0 ? bar.costCNY / bar.tokens : 1;
-				return { ...bar, o: bar.o * factor, h: bar.h * factor, l: bar.l * factor, c: bar.c * factor };
-			});
-			const lows = priced.map((bar) => bar.l).filter((value) => Number.isFinite(value));
-			const highs = priced.map((bar) => bar.h).filter((value) => Number.isFinite(value));
-			const rawMin = lows.length > 0 ? Math.min(...lows) : 0;
-			const rawMax = highs.length > 0 ? Math.max(...highs) : 1;
-			const pad = Math.max((rawMax - rawMin) * 0.08, rawMax === 0 ? 1 : rawMax * 0.02);
-			const min = rawMin - pad;
-			const max = rawMax + pad;
-			const scaleY = (value) => priceBottom - ((value - min) / (max - min || 1)) * (priceBottom - priceTop);
-			const barWidth = plotWidth / list.length;
-			const bodyWidth = Math.max(0.8, Math.min(barWidth * 0.62, 14));
-			// Bar height must be comparable across the whole chart: scale every bar
-			// against the busiest one. Normalising each bar to its own total would
-			// make every bar equally tall, which is what made the chart unreadable.
-			// Bars are bucket totals; plot them per minute so the axis matches the
-			// header's "tokens/min" unit instead of a mixed magnitude.
-			const minutesPerBar = Math.max(1, Number(periodMs) / 60_000);
-			const priceValueOf = (bar) =>
-				priceMode === "cost" ? (Number(bar.costCNY) || 0) / minutesPerBar : (Number(bar.tokens) || 0) / minutesPerBar;
-			let maxBarValue = 0;
-			for (const bar of list) {
-				if (bar.empty) continue;
-				const value = priceValueOf(bar);
-				if (value > maxBarValue) maxBarValue = value;
-			}
-			if (!(maxBarValue > 0)) maxBarValue = 1;
-			const wickUp = [];
-			const wickDown = [];
-			const bodies = [];
-			const volume = [];
-			const maxVolume = Math.max(1, ...list.map((bar) => bar.vol || 0));
-			const volumeScale = (value) => volumeBottom - (value / maxVolume) * (volumeBottom - volumeTop);
-			const colors = [];
-			for (let index = 0; index < list.length; index += 1) {
-				const bar = priced[index];
-				const raw = list[index];
-				const x = left + index * barWidth + barWidth / 2;
-				if (isBars) {
-					if (raw.empty) {
-						// A quiet period is a hairline on the baseline, not a full-height block.
-						bodies.push(h("rect", { key: `b${index}-empty`, className: "ssp-term-bar-empty", x: (x - bodyWidth / 2).toFixed(2), y: (priceBottom - 2).toFixed(2), width: bodyWidth.toFixed(2), height: 2, fill: "var(--ssp-text-3)", opacity: 0.18 }));
-						continue;
-					}
-					const segments = Array.isArray(raw.byModel) && raw.byModel.length > 0 ? raw.byModel : raw.tokens > 0 ? [{ route: "__all", tokens: raw.tokens }] : [];
-					const totalTokens = segments.reduce((sum, segment) => sum + (Number(segment.tokens) || 0), 0) || 1;
-					// Absolute height for this bar, then split it across models.
-					const barHeight = Math.max(1, (priceValueOf(raw) / maxBarValue) * (priceBottom - priceTop));
-					let cursor = priceBottom;
-					for (const segment of segments) {
-						const share = (Number(segment.tokens) || 0) / totalTokens;
-						const height = share * barHeight;
-						if (height <= 0) continue;
-						cursor -= height;
-						const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
-						bodies.push(h("rect", { key: `b${index}-${segment.route}`, className: "ssp-term-bar", x: (x - bodyWidth / 2).toFixed(2), y: cursor.toFixed(2), width: bodyWidth.toFixed(2), height: Math.max(0.5, height).toFixed(2), fill: color, opacity: 0.85, shapeRendering: "crispEdges" }));
-					}
-					// Volume subchart is shared by both forms (calls per period).
-					let volumeCursor = volumeBottom;
-					for (const segment of segments) {
-						const share = (Number(segment.tokens) || 0) / totalTokens;
-						const segmentHeight = share * (volumeBottom - volumeTop) * ((Number(raw.vol) || 0) / maxVolume);
-						if (segmentHeight <= 0) continue;
-						volumeCursor -= segmentHeight;
-						const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
-						volume.push(h("rect", { key: `v${index}-${segment.route}`, x: (x - bodyWidth / 2).toFixed(2), y: volumeCursor.toFixed(2), width: bodyWidth.toFixed(2), height: Math.max(0.5, segmentHeight).toFixed(2), fill: color, opacity: 0.55 }));
-					}
-					continue;
-				}
-				const up = bar.c >= bar.o;
-				const flat = !raw.empty && Math.abs(bar.c - bar.o) < 1e-9;
-				const top = scaleY(Math.max(bar.o, bar.c));
-				const bottom = scaleY(Math.min(bar.o, bar.c));
-				const bodyHeight = Math.max(1, bottom - top);
-				const className = raw.empty ? "ssp-candle-body ssp-candle-empty" : flat ? "ssp-candle-body ssp-candle-flat" : up ? "ssp-candle-body ssp-candle-up" : "ssp-candle-body ssp-candle-down";
-				const wickClass = flat ? "ssp-candle-wick-flat" : up ? "ssp-candle-wick-up" : "ssp-candle-wick-down";
-				if (!raw.empty) {
-					const path = `M${x.toFixed(2)} ${scaleY(bar.h).toFixed(2)}L${x.toFixed(2)} ${scaleY(bar.l).toFixed(2)}`;
-					(up ? wickUp : wickDown).push(path);
-				}
-				bodies.push(
-					h("rect", {
-						key: `b${index}`,
-						x: (x - bodyWidth / 2).toFixed(2),
-						y: top.toFixed(2),
-						width: bodyWidth.toFixed(2),
-						height: bodyHeight.toFixed(2),
-						className,
-						shapeRendering: "crispEdges",
-					}),
-				);
-				// Volume: stacked by model when available, otherwise a single grey bar.
-				let cursor = volumeBottom;
-				const segments = Array.isArray(raw.byModel) && raw.byModel.length > 0 ? raw.byModel : raw.tokens > 0 ? [{ route: "__all", tokens: raw.tokens }] : [];
-				const totalTokens = segments.reduce((sum, segment) => sum + (Number(segment.tokens) || 0), 0) || 1;
-				for (const segment of segments) {
-					const share = (Number(segment.tokens) || 0) / totalTokens;
-					const segmentHeight = share * (volumeBottom - volumeTop) * ((Number(raw.vol) || 0) / maxVolume);
-					if (segmentHeight <= 0) continue;
-					cursor -= segmentHeight;
-					const color = segment.route === "__all" ? "var(--ssp-text-3)" : colorByRoute.get(segment.route) ?? "var(--ssp-text-3)";
-					volume.push(h("rect", { key: `v${index}-${segment.route}`, x: (x - bodyWidth / 2).toFixed(2), y: cursor.toFixed(2), width: bodyWidth.toFixed(2), height: Math.max(0.5, segmentHeight).toFixed(2), fill: color, opacity: 0.55 }));
-				}
-				colors.push(raw.empty);
-			}
-			// Moving averages over closes.
-			// Moving average must break across quiet stretches: joining them draws a
-			// line through periods that had no activity at all.
-			const ma = (window) => {
-				const segments = [];
-				let points = [];
-				for (let index = 0; index < priced.length; index += 1) {
-					if (priced[index].empty) {
-						if (points.length > 1) segments.push(points.join("L"));
-						points = [];
-						continue;
-					}
-					if (index < window - 1) continue;
-					let sum = 0;
-					let count = 0;
-					for (let cursor = index - window + 1; cursor <= index; cursor += 1) {
-						if (priced[cursor].empty) continue;
-						sum += priced[cursor].c;
-						count += 1;
-					}
-					if (count === 0) continue;
-					points.push(`${(left + index * barWidth + barWidth / 2).toFixed(2)},${scaleY(sum / count).toFixed(2)}`);
-				}
-				if (points.length > 1) segments.push(points.join("L"));
-				return segments.length > 0 ? segments.map((segment) => `M${segment}`).join(" ") : "";
-			};
-			const ma5 = isBars ? "" : ma(5);
-			const ma10 = isBars ? "" : ma(10);
-			const ma20 = isBars ? "" : ma(20);
-			const last = priced[priced.length - 1];
-			const maValue = (window) => {
-				if (priced.length < window) return null;
-				let sum = 0;
-				for (let index = priced.length - window; index < priced.length; index += 1) sum += priced[index].c;
-				return sum / window;
-			};
-			const hoverBar = hover >= 0 && hover < list.length ? list[hover] : null;
-			const hoverPriced = hover >= 0 && hover < priced.length ? priced[hover] : null;
-			// Bar mode plots absolute totals, so its axis must follow the same scale
-			// as the bars (0 → busiest period) instead of the candle price range.
-			const priceTicks = isBars
-				? [
-						{ value: 0, y: priceBottom },
-						{ value: maxBarValue / 2, y: (priceBottom + priceTop) / 2 },
-						{ value: maxBarValue, y: priceTop },
-					]
-				: [0, 0.5, 1].map((fraction) => {
-						const value = min + (max - min) * fraction;
-						return { value, y: scaleY(value) };
-					});
-			const timeTicks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
-				const index = Math.min(list.length - 1, Math.round(fraction * (list.length - 1)));
-				return { index, label: formatClock(list[index].t, offsetMs).slice(0, 5) };
-			});
-			const priceFormat = (value) => (priceMode === "cost" ? `¥${formatMoney(value)}` : formatTokens(value));
-			const changeOf = (index) => {
-				if (index <= 0) return null;
-				const previous = priced[index - 1].c;
-				return previous > 0 ? (priced[index].c - previous) / previous : null;
-			};
-			const onMove = (event) => {
-				const rect = event.currentTarget.getBoundingClientRect();
-				const x = event.clientX - rect.left;
-				const index = Math.round(((x / rect.width) * width - left) / barWidth - 0.5);
-				onHover(index >= 0 && index < list.length ? index : -1);
-			};
-			const tooltip = hoverBar === null ? null : h(
-				"div",
-				{ className: `ssp-term-tip${hover > list.length * 0.62 ? " ssp-term-tip-left" : ""}` },
-				h("div", { className: "ssp-term-tip-head" }, `${formatRange(hoverBar.t, periodMs, offsetMs)} · ${period}`),
-				h("div", { className: "ssp-term-tip-grid" },
-					h("span", null, `${t("term.open")} ${priceFormat(hoverPriced.o)}`),
-					h("span", null, `${t("term.high")} ${priceFormat(hoverPriced.h)}`),
-					h("span", null, `${t("term.low")} ${priceFormat(hoverPriced.l)}`),
-					h("span", null, `${t("term.close")} ${priceFormat(hoverPriced.c)}`),
-				),
-				h("div", { className: "ssp-term-tip-grid" },
-					h("span", null, `${t("term.chg")} `, h(ChangeBadge, { t, value: changeOf(hover) })),
-					h("span", null, `${t("term.total")} ${formatTokens(hoverBar.tokens)}`),
-					h("span", null, `${t("term.cost")} ¥${formatMoney(hoverBar.costCNY)}`),
-					h("span", null, `${t("term.calls")} ${hoverBar.calls}`),
-				),
-				h("div", { className: "ssp-term-tip-grid" },
-					h("span", null, `${t("term.sessions")} ${hoverBar.sessions}`),
-					h("span", null, `${t("term.hit")} ${formatPercent(hoverBar.cacheHit)}`),
-					h("span", { className: "ssp-term-tip-model" }, `Top ${hoverBar.byModel[0] ? (models.find((model) => model.route === hoverBar.byModel[0].route)?.label ?? hoverBar.byModel[0].route) : "--"}`),
-				),
-			);
+		/** Pill segmented control shared by the heatmap mode and the session sort. */
+		function Segmented({ label, options, value, onChange }) {
 			return h(
 				"div",
-				{ className: "ssp-term-chart", onMouseMove: onMove, onMouseLeave: () => onHover(-1) },
-				h(
-					"svg",
-					{ viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": t("chart.aria") },
-					h("defs", null, h("pattern", { id: "ssp-hatch", width: 4, height: 4, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, h("rect", { width: 1, height: 4, fill: "var(--ssp-text-3)", opacity: 0.18 }))),
-					priceTicks.map((tick, index) => h("line", { key: `g${index}`, x1: left, x2: width - right, y1: tick.y, y2: tick.y, className: "ssp-term-grid-line" })),
-					priceTicks.map((tick, index) => h("text", { key: `p${index}`, x: width - right + 8, y: tick.y + 4, className: "ssp-term-axis" }, priceFormat(tick.value))),
-					h("path", { d: wickUp.join(""), className: "ssp-candle-wick-up", fill: "none" }),
-					h("path", { d: wickDown.join(""), className: "ssp-candle-wick-down", fill: "none" }),
-					bodies,
-					ma5 === "" ? null : h("path", { d: ma5, className: "ssp-ma ssp-ma5", fill: "none" }),
-					ma10 === "" ? null : h("path", { d: ma10, className: "ssp-ma ssp-ma10", fill: "none" }),
-					ma20 === "" ? null : h("path", { d: ma20, className: "ssp-ma ssp-ma20", fill: "none" }),
-					h("line", { x1: left, x2: width - right, y1: volumeTop, y2: volumeTop, className: "ssp-term-axis-line" }),
-					volume,
-					h("line", { x1: left, x2: width - right, y1: volumeBottom, y2: volumeBottom, className: "ssp-term-axis-line" }),
-					timeTicks.map((tick) => h("text", { key: `t${tick.index}`, x: left + tick.index * barWidth + barWidth / 2, y: height - 6, className: "ssp-term-axis ssp-term-axis-time", textAnchor: "middle" }, tick.label)),
-					hoverPriced === null ? null : h("line", { x1: left + hover * barWidth + barWidth / 2, x2: left + hover * barWidth + barWidth / 2, y1: priceTop, y2: volumeBottom, className: "ssp-term-cross" }),
-					hoverPriced === null ? null : h("line", { x1: left, x2: width - right, y1: scaleY(hoverPriced.c), y2: scaleY(hoverPriced.c), className: "ssp-term-cross" }),
-					hoverPriced === null
-						? h("g", null,
-							h("rect", { x: width - right + 4, y: scaleY(last.c) - 8, width: right - 8, height: 16, rx: 3, className: "ssp-term-last-tag" }),
-							h("text", { x: width - right + 8, y: scaleY(last.c) + 4, className: "ssp-term-axis ssp-term-last-tag-text", fill: last.c >= last.o ? "var(--up)" : "var(--down)" }, priceFormat(last.c)),
-						)
-						: h("text", { x: width - right + 8, y: scaleY(hoverPriced.c) + 4, className: "ssp-term-axis ssp-term-axis-hot" }, priceFormat(hoverPriced.c)),
-					hoverBar === null ? null : h("text", { x: left + hover * barWidth + barWidth / 2, y: height - 6, className: "ssp-term-axis ssp-term-axis-hot", textAnchor: "middle" }, formatClock(hoverBar.t, offsetMs).slice(0, 5)),
-					list.map((bar, index) =>
-						h("rect", { key: `hit${index}`, x: left + index * barWidth, y: priceTop, width: barWidth, height: volumeBottom - priceTop, fill: "transparent", "aria-label": `${formatRange(bar.t, periodMs, offsetMs)} O${priceFormat(bar.o)} H${priceFormat(bar.h)} L${priceFormat(bar.l)} C${priceFormat(bar.c)} vol ${bar.vol}` }),
-					),
-				),
-				h("div", { className: "ssp-term-legend" },
-					isBars
-						? h("span", { className: "ssp-term-legend-item" }, t("chart.stacked"))
-						: [
-								h("span", { className: "ssp-term-legend-item ssp-ma5", key: "ma5" }, `MA5 ${maValue(5) === null ? "--" : priceFormat(maValue(5))}`),
-								h("span", { className: "ssp-term-legend-item ssp-ma10", key: "ma10" }, `MA10 ${maValue(10) === null ? "--" : priceFormat(maValue(10))}`),
-								h("span", { className: "ssp-term-legend-item ssp-ma20", key: "ma20" }, `MA20 ${maValue(20) === null ? "--" : priceFormat(maValue(20))}`),
-							],
-					h("span", { className: "ssp-term-legend-spacer" }),
-					h("span", { className: "ssp-term-legend-item ssp-term-legend-vol" }, t("chart.volume")),
-				),
-				tooltip,
-			);
-		}
-
-		/** Watchlist (models) with mini K, current rate, change, cost. */
-		function Watchlist({ t, symbols, selected, onSelect, currency, symbolText }) {
-			return h(
-				"section",
-				{ className: "ssp-card ssp-watch" },
-				h("div", { className: "ssp-card-head" }, h("div", null, h("div", { className: "ssp-card-title" }, t("watch.title")), h("div", { className: "ssp-card-sub" }, t("watch.sub")))),
-				h(
-					"div",
-					{ className: "ssp-watch-list" },
+				{ className: "ssp-seg", role: "group", "aria-label": label },
+				options.map((option) =>
 					h(
 						"button",
-						{ type: "button", className: `ssp-watch-row${selected === "ALL" ? " ssp-watch-active" : ""}`, onClick: () => onSelect("ALL") },
-						h("span", { className: "ssp-watch-code" }, "ALL"),
-						h("span", { className: "ssp-watch-name" }, t("watch.all")),
-						h("span", { className: "ssp-watch-spark" }),
-						h("span", { className: "ssp-watch-price" }, t("watch.allPrice")),
-						h("span", { className: "ssp-watch-chg" }, ""),
-						h("span", { className: "ssp-watch-cost" }, ""),
-					),
-					symbols.map((item) =>
-						h(
-							"button",
-							{ type: "button", className: `ssp-watch-row${selected === item.route ? " ssp-watch-active" : ""}`, key: item.route, onClick: () => onSelect(item.route) },
-							h("span", { className: "ssp-watch-code" }, item.code),
-							h("span", { className: "ssp-watch-name", title: item.name }, item.name),
-							h(MiniK, { values: item.spark }),
-							h("span", { className: "ssp-watch-price" }, formatTokens(item.rate)),
-							h(ChangeBadge, { t, value: item.chgPct }),
-							h("span", { className: "ssp-watch-cost" }, item.unpriced ? t("models.unpriced") : `${symbolText}${formatMoney(item.costCNY)}`),
-						),
+						{
+							key: option.key,
+							type: "button",
+							className: `ssp-seg-btn${option.key === value ? " ssp-seg-active" : ""}`,
+							"aria-pressed": option.key === value ? "true" : "false",
+							onClick: () => onChange(option.key),
+						},
+						option.label,
 					),
 				),
 			);
 		}
 
-		/** Recent activity tape: chat + official search rows. */
-		function Tape({ t, tape, currency, symbolText, rate, offsetMs = 8 * 3_600_000 }) {
+		/**
+		 * GitHub-style activity calendar: 8 week columns × 7 day rows.
+		 *
+		 * The host sends 56 consecutive days oldest-first, so slicing them into
+		 * chunks of seven puts the newest day in the bottom-right cell without
+		 * needing to know the weekday offset. Empty days keep the faintest shade
+		 * instead of disappearing, which is what makes gaps readable.
+		 */
+		function HeatmapCard({ t, heatmap, state }) {
+			const [mode, setMode] = react.useState("tokens");
+			const list = Array.isArray(heatmap) ? heatmap.slice(-56) : [];
+			const valueOf = (cell) => (mode === "sessions" ? Number(cell.sessions) || 0 : Number(cell.tokens) || 0);
+			let max = 0;
+			for (const cell of list) max = Math.max(max, valueOf(cell));
+			const levelOf = (value) => {
+				if (!(value > 0)) return 0;
+				if (!(max > 0)) return 1;
+				return Math.min(4, 1 + Math.floor((value / max) * 3.999));
+			};
+			const columns = [];
+			for (let index = 0; index < list.length; index += 7) columns.push(list.slice(index, index + 7));
 			return h(
 				"section",
-				{ className: "ssp-card ssp-tape" },
-				h("div", { className: "ssp-card-head" }, h("div", null, h("div", { className: "ssp-card-title" }, t("tape.title")), h("div", { className: "ssp-card-sub" }, t("tape.sub")))),
+				{ className: "ssp-card ssp-heat", "aria-label": t("heatmap.title") },
 				h(
 					"div",
-					{ className: "ssp-tape-list" },
-					tape.length === 0
-						? h("div", { className: "ssp-card-sub" }, t("tape.empty"))
-						: tape.map((entry, index) =>
-								h(
-									"div",
-									{ className: "ssp-tape-row", key: `${entry.t}-${index}` },
-									h("span", { className: "ssp-tape-time" }, formatClock(entry.t, offsetMs)),
-									h("span", { className: `ssp-tape-dot ${entry.kind === "search" ? "ssp-tape-dot-search" : entry.costCNY > 0 ? "ssp-tape-dot-up" : "ssp-tape-dot-down"}` }),
-									h("span", { className: "ssp-tape-model" }, entry.kind === "search" ? `SEARCH · ${t("models.search")}` : entry.model),
-									h("span", { className: "ssp-tape-tokens" }, entry.kind === "search" ? "--" : formatTokens(entry.tokens)),
-									h("span", { className: "ssp-tape-cost" }, `${symbolText}${formatMoney(currency === "CNY" ? entry.costCNY : entry.costCNY / (Number(rate) > 0 ? Number(rate) : 7.1))}`),
-								),
-							),
-				),
-			);
-		}
-
-		/** Positions table: code / name + mini K / price / change / share / tokens / cost. */
-		function Positions({ t, symbols, totals, currency, symbolText, models }) {
-			const totalTokens = totals === null ? 0 : Number(totals.tokens) || 0;
-			return h(
-				"section",
-				{ className: "ssp-card ssp-positions" },
-				h("div", { className: "ssp-card-head" }, h("div", null, h("div", { className: "ssp-card-title" }, t("positions.title")), h("div", { className: "ssp-card-sub" }, t("positions.sub")))),
-				h(
-					"div",
-					{ className: "ssp-pos-table" },
+					{ className: "ssp-card-head" },
 					h(
 						"div",
-						{ className: "ssp-pos-row ssp-pos-head" },
-						h("span", null, t("positions.colCode")),
-						h("span", null, t("positions.colName")),
-						h("span", null, t("positions.colPrice")),
-						h("span", null, t("positions.colChg")),
-						h("span", null, t("positions.colShare")),
-						h("span", null, "tokens"),
-						h("span", null, t("positions.colCost")),
+						null,
+						h("div", { className: "ssp-card-title" }, t("heatmap.title")),
+						h("div", { className: "ssp-card-sub" }, t("heatmap.sub")),
 					),
-					symbols.map((item) => {
-						const share = totalTokens > 0 ? item.tokens / totalTokens : 0;
-						return h(
-							"div",
-							{ className: "ssp-pos-row", key: item.route },
-							h("span", { className: "ssp-pos-code" }, item.code),
-							h(
-								"span",
-								{ className: "ssp-pos-name" },
-								h(ColorChip, { color: item.color, className: "ssp-pos-dot" }),
-								h("span", { title: item.name }, item.name),
-								h(MiniK, { values: item.spark }),
-							),
-							h("span", { className: "ssp-pos-price" }, formatTokens(item.rate)),
-							h(ChangeBadge, { t, value: item.unpriced ? null : item.chgPct }),
-							h("span", { className: "ssp-pos-share" }, h("span", { className: "ssp-pos-bar" }, h("span", { className: "ssp-pos-bar-fill", style: { width: `${Math.max(1, share * 100).toFixed(1)}%`, background: item.color } }))),
-							h("span", { className: "ssp-pos-tokens" }, formatTokens(item.tokens)),
-							h("span", { className: "ssp-pos-cost" }, item.unpriced ? t("models.unpriced") : `${symbolText}${formatMoney(item.costCNY)}`),
-						);
+					h(Segmented, {
+						label: t("heatmap.aria"),
+						value: mode,
+						onChange: setMode,
+						options: [
+							{ key: "tokens", label: t("heatmap.mode.tokens") },
+							{ key: "sessions", label: t("heatmap.mode.sessions") },
+						],
 					}),
 				),
-			);
-		}
-
-		/** K-line terminal view (the playful one): quote header, index strip, chart, watchlist, tape, positions. */
-		function TerminalView(props) {
-			const { mode, onModeChange } = props;
-			const t = typeof props.t === "function" ? props.t : (key) => key;
-			const [windowKey, setWindowKey] = react.useState(null);
-			const [currency, setCurrency] = react.useState("CNY");
-			const [view, setView] = react.useState(() => {
-				try {
-					return window.localStorage.getItem("dsh-session-stats:chart") === "candles" ? "candles" : "bars";
-				} catch {
-					return "bars";
-				}
-			});
-			const changeView = (next) => {
-				setView(next);
-				try {
-					window.localStorage.setItem("dsh-session-stats:chart", next);
-				} catch {
-					// storage unavailable (private mode) — the toggle still works for this session
-				}
-			};
-			const [priceMode, setPriceMode] = react.useState("tokens");
-			const [selected, setSelected] = react.useState("ALL");
-			const [hover, setHover] = react.useState(-1);
-			const [reloadKey, setReloadKey] = react.useState(0);
-			const overview = useOverview(windowKey, reloadKey);
-			const live = useLive();
-			const data = overview.data;
-			const totals = data !== null && data.totals ? data.totals : null;
-			const loading = data === null && overview.status !== "error";
-			const placeholder = t("state.placeholder");
-			const effectiveWindow = windowKey ?? (data !== null && data.window && data.window.key ? data.window.key : "7d");
-			const currencyRate = data !== null && Number(data.currency?.usdRate) > 0 ? Number(data.currency.usdRate) : 7.1;
-			const symbolText = currency === "CNY" ? "¥" : "$";
-			const terminal = data !== null && data.terminal ? data.terminal : null;
-			const symbols = terminal !== null && Array.isArray(terminal.symbols) ? terminal.symbols : [];
-			const indices = terminal !== null && Array.isArray(terminal.indices) ? terminal.indices : [];
-			const tape = terminal !== null && Array.isArray(terminal.tape) ? terminal.tape : [];
-			const models = data !== null && Array.isArray(data.models) ? data.models : [];
-			const candles = terminal !== null && terminal.candles ? terminal.candles : { period: "-", bars: [] };
-			const bars = candles.bars;
-			const periodMs = bars.length > 1 ? Math.max(1, bars[1].t - bars[0].t) : 300_000;
-			const windowMinutes = data !== null && data.window ? Math.max(1, (data.window.to - data.window.from) / 60_000) : 1;
-			const selectedSymbol = selected !== "ALL" && !indices.some((item) => item.key === selected) ? symbols.find((item) => item.route === selected) ?? null : null;
-			const selectedIndex = indices.find((item) => item.key === selected) ?? null;
-			let chartBars = bars;
-			let instrumentTitle = t("watch.all");
-			if (selectedSymbol !== null) {
-				instrumentTitle = `${selectedSymbol.code} ${selectedSymbol.name}`;
-				chartBars = bars.map((bar) => {
-					const entry = (bar.byModel ?? []).find((model) => model.route === selectedSymbol.route);
-					const tokens = entry ? entry.tokens : 0;
-					const rate = tokens / Math.max(1, periodMs / 60_000);
-					return { ...bar, o: rate, h: rate, l: rate, c: rate, tokens, vol: tokens > 0 ? 1 : 0, byModel: entry ? [{ route: entry.route, tokens }] : [] };
-				});
-			} else if (selectedIndex !== null) {
-				instrumentTitle = t(`index.${selectedIndex.key}`, { defaultValue: selectedIndex.label });
-				const values = Array.isArray(selectedIndex.spark) ? selectedIndex.spark : [];
-				const scale = Math.max(1, values.length);
-				const stepMs = (periodMs * bars.length) / scale;
-				chartBars = values.map((value, index) => {
-					const previous = index === 0 ? value : values[index - 1];
-					const o = Number(previous) || 0;
-					const c = Number(value) || 0;
-					return { t: bars.length > 0 ? bars[0].t + index * stepMs : index * stepMs, o, h: Math.max(o, c), l: Math.min(o, c), c, tokens: c, vol: Math.abs(c) > 0 ? 1 : 0, costCNY: 0, calls: 0, sessions: 0, cacheHit: 0, byModel: [], empty: c === 0 && o === 0 };
-				});
-			}
-			const zoneOffset = data !== null && data.window && Number.isFinite(data.window.offsetMs) ? Number(data.window.offsetMs) : 8 * 3_600_000;
-			const priceFactor = priceMode === "cost";
-			// Bar mode shows magnitudes, so merging neighbouring buckets keeps every
-			// bar visible without losing totals. Do it here, before any number is
-			// derived, so the header, the axis and the bars all describe one series.
-			// Merge only when a bar would otherwise be thinner than ~5 CSS px; that
-			// keeps 7d's hourly bars intact instead of collapsing them into 2h.
-			const barTarget = Math.max(24, Math.floor((1000 - 8 - 72) / 5));
-			const displayBars = view === "bars" ? mergeBars(chartBars, barTarget) : mergeCandles(chartBars, barTarget);
-			// Both forms may merge buckets. Measure the real spacing of the drawn
-			// bars instead of inferring it from counts: candles drop empty buckets
-			// first, so a count ratio would overstate the period.
-			const measuredPeriodMs =
-				displayBars.length > 1 ? Math.max(1, displayBars[1].t - displayBars[0].t) : periodMs;
-			const displayPeriodMs = measuredPeriodMs > periodMs ? measuredPeriodMs : periodMs;
-			// Bar values are bucket totals; express them per minute so the header,
-			// the axis and the candle view all use one unit (tokens/min).
-			const perMinute = Math.max(1, displayPeriodMs / 60_000);
-			chartBars = view === "bars" ? displayBars.map((bar) => {
-				const rate = priceFactor ? bar.costCNY / perMinute : bar.tokens / perMinute;
-				return { ...bar, o: rate, h: rate, l: rate, c: rate, tokensPerMin: bar.tokens / perMinute, costPerMin: bar.costCNY / perMinute };
-			}) : displayBars;
-			// Label must describe what is actually drawn, not the raw resolution.
-			const displayPeriodText = displayPeriodMs !== periodMs ? `${Math.round(displayPeriodMs / 60_000)}m` : candles.period;
-			const lastBar = chartBars.length > 0 ? chartBars[chartBars.length - 1] : null;
-			const firstBar = chartBars.find((bar) => !bar.empty) ?? null;
-			const currentRate = lastBar === null ? 0 : lastBar.c;
-			const openRate = firstBar === null ? 0 : priceFactor ? firstBar.o : firstBar.o;
-			// Quiet periods must not drag "low" down to zero: only buckets that
-			// actually carried usage define the range.
-			const activeBars = chartBars.filter((bar) => !bar.empty && bar.c > 0);
-			const highRate = activeBars.length === 0 ? 0 : Math.max(...activeBars.map((bar) => bar.h));
-			const lowRate = activeBars.length === 0 ? 0 : Math.min(...activeBars.map((bar) => bar.l));
-			const avgRate = chartBars.length === 0 ? 0 : chartBars.reduce((sum, bar) => sum + (priceFactor ? bar.costCNY : bar.c), 0) / chartBars.length;
-			const chgPct = openRate > 0 ? (currentRate - openRate) / openRate : null;
-			const amplitude = openRate > 0 ? (highRate - lowRate) / openRate : null;
-			const priceFormat = (value) => (priceFactor ? `¥${formatMoney(value)}` : formatTokens(value));
-			const stats = [
-				{ key: "open", value: priceFormat(openRate) },
-				{ key: "high", value: priceFormat(highRate) },
-				{ key: "low", value: priceFormat(lowRate) },
-				{ key: "avg", value: priceFormat(avgRate) },
-				{ key: "amplitude", value: formatPercent(amplitude ?? 0) },
-			];
-			const tabs = [
-				{ key: "24h", label: t("window.24h") },
-				{ key: "7d", label: t("window.7d") },
-				{ key: "14d", label: t("window.14d") },
-				{ key: "30d", label: t("window.30d") },
-			];
-			return h(
-				"div",
-				{ className: "ssp-term ssp-root", "data-testid": "session-stats-page", "data-loading": loading ? "true" : "false" },
-				h(
-					"div",
-					{ className: "ssp-term-page" },
-					h(
-						"header",
-						{ className: "ssp-term-head" },
-						h("div", { className: "ssp-term-brand" }, h("h1", { className: "ssp-term-title" }, h("span", { className: "ssp-live-dot" }), t("panel")), h("span", { className: "ssp-term-sub" }, t("terminal.sub"))),
-						h(
+				list.length === 0
+					? h(PendingBody, { t, text: chunkFallback(t, state, t("heatmap.empty")) })
+					: h(
 							"div",
-							{ className: "ssp-term-controls" },
-							h(
-								"div",
-								{ className: "ssp-tabs", role: "tablist" },
-								tabs.map((tab) => h("button", { key: tab.key, type: "button", role: "tab", "aria-selected": effectiveWindow === tab.key ? "true" : "false", className: `ssp-tab${effectiveWindow === tab.key ? " ssp-tab-active" : ""}`, onClick: () => setWindowKey(tab.key) }, tab.label)),
-							),
-							h(
-								"div",
-								{ className: "ssp-currency", role: "radiogroup", "aria-label": t("currency.aria") },
-								["CNY", "USD"].map((code) =>
-									h(
-										"button",
-										{
-											key: code,
-											type: "button",
-											role: "radio",
-											className: "ssp-cur",
-											"aria-checked": currency === code ? "true" : "false",
-											onClick: () => setCurrency(code),
-										},
-										code,
+							{ className: "ssp-heat-grid" },
+							columns.map((column, columnIndex) =>
+								h(
+									"div",
+									{ className: "ssp-heat-col", key: `col${columnIndex}` },
+									column.map((cell) =>
+										h("div", {
+											key: String(cell.date),
+											className: `ssp-heat-cell ssp-heat-l${levelOf(valueOf(cell))}`,
+											"data-date": String(cell.date),
+											"data-value": String(valueOf(cell)),
+											title: t("heatmap.cell", {
+												date: String(cell.date),
+												tokens: formatTokens(cell.tokens),
+												sessions: Number(cell.sessions) || 0,
+												turns: Number(cell.turns) || 0,
+											}),
+										}),
 									),
 								),
 							),
-							h(
-								"div",
-								{ className: "ssp-view-toggle", role: "group", "aria-label": t("view.aria") },
-								h("button", { type: "button", className: `ssp-view-btn${view === "bars" ? " ssp-view-active" : ""}`, onClick: () => changeView("bars"), "aria-pressed": view === "bars" ? "true" : "false" }, t("chart.bars")),
-								h("button", { type: "button", className: `ssp-view-btn${view === "candles" ? " ssp-view-active" : ""}`, onClick: () => changeView("candles"), "aria-pressed": view === "candles" ? "true" : "false" }, t("chart.candles")),
-							),
-							h(
-								"div",
-								{ className: "ssp-view-toggle", role: "group", "aria-label": t("priceMode.aria") },
-								h("button", { type: "button", className: `ssp-view-btn${priceMode === "tokens" ? " ssp-view-active" : ""}`, onClick: () => setPriceMode("tokens"), "aria-pressed": priceMode === "tokens" ? "true" : "false" }, t("priceMode.tokens")),
-								h("button", { type: "button", className: `ssp-view-btn${priceMode === "cost" ? " ssp-view-active" : ""}`, onClick: () => setPriceMode("cost"), "aria-pressed": priceMode === "cost" ? "true" : "false" }, t("priceMode.cost")),
-							),
-							h(ModeToggle, { t, mode, onModeChange }),
 						),
-					),
-					overview.status === "error" ? h("div", { className: "ssp-term-error" }, t("state.error", { message: overview.error ?? "" }), h("button", { type: "button", className: "ssp-retry", onClick: () => setReloadKey((value) => value + 1) }, t("state.retry"))) : null,
-					h(Ticker, { t, indices, symbols, totalTokens: totals === null ? 0 : totals.tokens }),
-					h(
-						"section",
-						{ className: "ssp-index-strip", "aria-label": t("index.aria") },
-						indices.length === 0
-							? h("div", { className: "ssp-term-empty" }, t("state.receiving"))
-							: indices.map((item) => h(IndexCell, { key: item.key, t, item, selected: selected === item.key, onSelect: (key) => setSelected(selected === key ? "ALL" : key) })),
-					),
-					h(InstrumentHeader, {
-						t,
-						title: instrumentTitle,
-						unit: priceFactor ? t("unit.costRate") : t("unit.tokenRate"),
-						price: data === null ? placeholder : priceFormat(currentRate),
-						chgPct,
-						stats,
-					}),
-					h(
-						"section",
-						{ className: "ssp-card ssp-term-chart-card", "aria-label": t("chart.aria") },
-						h(
+				list.length === 0
+					? null
+					: h(
 							"div",
-							{ className: "ssp-term-chart-head" },
-							h("div", null, h("div", { className: "ssp-card-title" }, t("chart.title")), h("div", { className: "ssp-card-sub" }, `${displayPeriodText} · ${t(view === "candles" ? "chart.candles" : "chart.bars")} · ${priceFactor ? t("priceMode.cost") : t("priceMode.tokens")}`)),
-							h("div", { className: "ssp-term-ohlc" }, lastBar === null ? "--" : `O ${priceFormat(lastBar.o)}  H ${priceFormat(lastBar.h)}  L ${priceFormat(lastBar.l)}  C ${priceFormat(lastBar.c)}`),
+							{ className: "ssp-heat-legend" },
+							h("span", null, t("heatmap.less")),
+							[0, 1, 2, 3, 4].map((level) => h("span", { key: `lg${level}`, className: `ssp-heat-cell ssp-heat-swatch ssp-heat-l${level}` })),
+							h("span", null, t("heatmap.more")),
 						),
-						data === null
-							? h("div", { className: "ssp-term-chart-empty" }, h("div", { className: "ssp-term-chart-empty-ring" }), h("div", { className: "ssp-card-sub" }, t("state.receiving")))
-							: h(TerminalChart, { t, bars: chartBars, view, priceMode, period: displayPeriodText, periodMs: displayPeriodMs, models, hover, onHover: setHover, placeholder: t("state.receiving"), offsetMs: zoneOffset }),
-					),
+			);
+		}
+
+		/**
+		 * Success-rate tier for the tool leaderboard badge.
+		 *
+		 * Green at 95% and above, amber from 80% up to 95%, red below that, and
+		 * `unknown` when the host had no paired tool results to compute a rate.
+		 * @param {number|null} value - 0..1 success rate.
+		 * @returns {"ok"|"warn"|"bad"|"unknown"} tier key.
+		 */
+		function successTier(value) {
+			const rate = Number(value);
+			if (value === null || value === undefined || !Number.isFinite(rate)) return "unknown";
+			if (rate >= 0.95) return "ok";
+			if (rate >= 0.8) return "warn";
+			return "bad";
+		}
+
+		/** Duration label for the tool leaderboard: 236ms below a second, 1.2s above. */
+		function formatDuration(value) {
+			const ms = Number(value);
+			if (value === null || value === undefined || !Number.isFinite(ms) || ms < 0) return null;
+			if (ms < 1000) return `${Math.round(ms)}ms`;
+			const seconds = ms / 1000;
+			return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
+		}
+
+		/**
+		 * Top-N horizontal bars shared by the tool / command / skill leaderboards.
+		 *
+		 * Each bar is scaled against the busiest entry of its own list, so the ten
+		 * rows stay comparable even when the absolute counts differ by orders of
+		 * magnitude. The host sends Top 20; only ten are drawn. `rich` adds the
+		 * success-rate badge and the average duration, which only the tool
+		 * leaderboard carries.
+		 */
+		function LeaderboardCard({ t, title, sub, entries, nameKey, state, rich }) {
+			const list = Array.isArray(entries) ? entries.slice(0, 10) : [];
+			let max = 0;
+			for (const entry of list) max = Math.max(max, Number(entry.count) || 0);
+			const scale = max > 0 ? max : 1;
+			const rowOf = (entry, index) => {
+				const name = String(entry[nameKey] ?? "");
+				const count = Number(entry.count) || 0;
+				const tier = rich ? successTier(entry.successRate) : "unknown";
+				const duration = rich ? formatDuration(entry.avgMs) : null;
+				const rateText = rich && tier !== "unknown" ? formatPercent(Number(entry.successRate)) : null;
+				// Hover text lists only the parts the host could actually compute.
+				const parts = [];
+				if (rateText !== null) parts.push(t("rank.ratePart", { value: rateText }));
+				if (duration !== null) parts.push(t("rank.avgPart", { value: duration }));
+				const errors = Number(entry.errorCount);
+				if (Number.isFinite(errors) && errors > 0) parts.push(t("rank.errorPart", { count: errors }));
+				const detailTitle = parts.length > 0 ? parts.join(" · ") : t("state.placeholder");
+				return h(
+					"div",
+					{ className: `ssp-rank-row${rich ? " ssp-rank-row-rich" : ""}`, key: `${name}-${index}` },
+					h("span", { className: "ssp-rank-name", title: name }, name === "" ? "--" : name),
 					h(
-						"section",
-						{ className: "ssp-term-grid" },
-						h(Watchlist, { t, symbols, selected, onSelect: setSelected, currency, symbolText }),
-						h(Tape, { t, tape, currency, symbolText, rate: currencyRate, offsetMs: zoneOffset }),
+						"span",
+						{ className: "ssp-rank-bar" },
+						h("span", { className: "ssp-rank-fill", style: { width: `${(count / scale) * 100}%` } }),
 					),
-					h(Positions, { t, symbols, totals, currency, symbolText, models }),
+					rich
+						? h(
+								"span",
+								{ className: `ssp-rate ssp-rate-${tier}`, title: detailTitle, "data-tier": tier },
+								rateText === null ? t("state.placeholder") : rateText,
+							)
+						: null,
+					rich ? h("span", { className: "ssp-rank-ms", title: detailTitle }, duration === null ? t("state.placeholder") : duration) : null,
+					h("span", { className: "ssp-rank-count" }, formatTokens(count)),
+				);
+			};
+			return h(
+				"section",
+				{ className: "ssp-card ssp-rank", "aria-label": title },
+				h(
+					"div",
+					{ className: "ssp-card-head" },
+					h("div", null, h("div", { className: "ssp-card-title" }, title), h("div", { className: "ssp-card-sub" }, sub)),
+				),
+				list.length === 0
+					? h(PendingBody, { t, text: chunkFallback(t, state, t("rank.empty")) })
+					: h("div", { className: "ssp-rank-list" }, list.map(rowOf)),
+			);
+		}
+
+		/**
+		 * Session list over the heavy payload.
+		 *
+		 * Subagent sessions are hidden by default because they outnumber the real
+		 * conversations (105 vs 63 on the reference machine) and would bury them.
+		 * Search matches the title and the last user prompt; the visible rows are
+		 * capped at 50 with an internal scroll so the panel never grows unbounded.
+		 */
+		function SessionListCard({ t, sessions, state, generatedAt, currency, symbol, rate }) {
+			const [query, setQuery] = react.useState("");
+			const [sort, setSort] = react.useState("recent");
+			const [withSubagents, setWithSubagents] = react.useState(false);
+			const all = Array.isArray(sessions) ? sessions : [];
+			const needle = query.trim().toLowerCase();
+			const usdRate = Number(rate) > 0 ? Number(rate) : 7.1;
+			const nowMs = Number(generatedAt) > 0 ? Number(generatedAt) : Date.now();
+			const visible = all.filter((session) => {
+				if (!withSubagents && session.isSubagent === true) return false;
+				if (needle === "") return true;
+				return `${session.title ?? ""}\n${session.lastPrompt ?? ""}`.toLowerCase().includes(needle);
+			});
+			const sorted = [...visible].sort((left, right) => {
+				if (sort === "tokens") return (Number(right.tokens) || 0) - (Number(left.tokens) || 0);
+				if (sort === "cost") return (Number(right.costCNY) || 0) - (Number(left.costCNY) || 0);
+				return (Number(right.lastActiveAt) || 0) - (Number(left.lastActiveAt) || 0);
+			});
+			const rows = sorted.slice(0, 50);
+			return h(
+				"section",
+				{ className: "ssp-card ssp-sessions", "aria-label": t("sessions.title") },
+				h(
+					"div",
+					{ className: "ssp-card-head" },
 					h(
-						"footer",
-						{ className: "ssp-term-status" },
-						h("span", null, `${t("status.data")} · ${data === null ? placeholder : t("window." + effectiveWindow)} · ${totals === null ? placeholder : totals.sessions} ${t("status.sessions")} · ${t("status.sampled")} ${formatClock(data === null ? Date.now() : data.generatedAt, zoneOffset)}`),
-						h("span", { className: "ssp-term-status-right" }, `${t("term.priceTable")} ${data !== null && data.pricing ? data.pricing.tableVersion : "--"}`),
+						"div",
+						null,
+						h("div", { className: "ssp-card-title" }, t("sessions.title")),
+						h("div", { className: "ssp-card-sub" }, t("sessions.sub", { shown: rows.length, total: visible.length })),
 					),
 				),
+				h(
+					"div",
+					{ className: "ssp-list-tools" },
+					h("input", {
+						className: "ssp-search",
+						type: "search",
+						value: query,
+						placeholder: t("sessions.search"),
+						"aria-label": t("sessions.search"),
+						onChange: (event) => setQuery(event !== null && event !== undefined && event.target ? String(event.target.value) : ""),
+					}),
+					h(Segmented, {
+						label: t("sessions.sortAria"),
+						value: sort,
+						onChange: setSort,
+						options: [
+							{ key: "recent", label: t("sessions.sort.recent") },
+							{ key: "tokens", label: t("sessions.sort.tokens") },
+							{ key: "cost", label: t("sessions.sort.cost") },
+						],
+					}),
+					h(
+						"label",
+						{ className: "ssp-check" },
+						h("input", {
+							type: "checkbox",
+							checked: withSubagents,
+							onChange: (event) => setWithSubagents(Boolean(event !== null && event !== undefined && event.target && event.target.checked)),
+						}),
+						h("span", null, t("sessions.withSubagents")),
+					),
+				),
+				rows.length === 0
+					? h(PendingBody, {
+							t,
+							text: all.length === 0 ? chunkFallback(t, state, t("sessions.empty")) : t("sessions.empty"),
+						})
+					: h(
+							"div",
+							{ className: "ssp-sess-list" },
+							rows.map((session) => {
+								const tokens = Number(session.tokens) || 0;
+								const costCNY = Number(session.costCNY) || 0;
+								const cost = currency === "CNY" ? costCNY : costCNY / usdRate;
+								const rawTitle = String(session.title ?? "").trim();
+								const title = rawTitle === "" ? t("sessions.untitled") : rawTitle;
+								return h(
+									"article",
+									{
+										className: "ssp-sess-row",
+										key: String(session.id ?? title),
+										"data-archived": session.isArchived === true ? "true" : "false",
+										"data-subagent": session.isSubagent === true ? "true" : "false",
+									},
+									h(
+										"div",
+										null,
+										h(
+											"div",
+											{ className: "ssp-sess-head" },
+											h("span", { className: "ssp-sess-title", title }, title),
+											session.isSubagent === true ? h("span", { className: "ssp-sess-tag" }, t("sessions.subagentTag")) : null,
+											session.isArchived === true ? h("span", { className: "ssp-sess-tag" }, t("sessions.archivedTag")) : null,
+										),
+										h("div", { className: "ssp-sess-prompt" }, String(session.lastPrompt ?? "").trim() === "" ? t("state.placeholder") : String(session.lastPrompt)),
+									),
+									h(
+										"div",
+										{ className: "ssp-sess-side" },
+										h("div", { className: "ssp-sess-cost" }, `${symbol}${formatMoney(cost)}`),
+										h("div", { className: "ssp-sess-time" }, formatRelative(t, nowMs, session.lastActiveAt)),
+									),
+									h(
+										"div",
+										{ className: "ssp-sess-foot" },
+										h("span", null, `${formatTokens(tokens)} tokens`),
+										h("span", null, t("sessions.turns", { count: Number(session.turns) || 0 })),
+										h("span", null, t("sessions.steps", { count: Number(session.steps) || 0 })),
+									),
+								);
+							}),
+						),
 			);
 		}
 		//#endregion
 
 		//#region page
-		/** The original stats layout (the primary view). */
+		/** The stats layout: the panel's only view. */
 		function StatsView(props) {
-			const { mode, onModeChange } = props;
 			const t = typeof props.t === "function" ? props.t : (key) => key;
 			// null = follow the host's configured default window (learned from the first response).
 			const [windowKey, setWindowKey] = react.useState(null);
 			const [currency, setCurrency] = react.useState("CNY");
 			const [reloadKey, setReloadKey] = react.useState(0);
 			const overview = useOverview(windowKey, reloadKey);
+			// The heavy chunk fires together with the overview one: waiting for the
+			// fast response first would serialise the two and cost the whole lead time.
+			const heavy = useHeavy(windowKey, reloadKey);
 			const live = useLive();
 			const data = overview.data;
 			const totals = data !== null && data.totals ? data.totals : null;
 			const effectiveWindow = windowKey ?? (data !== null && data.window && data.window.key ? data.window.key : "7d");
 			const symbol = currency === "CNY" ? "¥" : "$";
 			const placeholder = t("state.placeholder");
-			const costOf = (target) => (currency === "CNY" ? target.costCNY : target.costUSD);
+			const usdRate = data !== null && Number(data.currency?.usdRate) > 0 ? Number(data.currency.usdRate) : 7.1;
 			// The cost card shows token cost plus flat official-search cost.
 			const totalCostOf = (target) => {
 				const cny = Number(target.costCNYTotal ?? target.costCNY) || 0;
-				const rate = Number(data?.currency?.usdRate) > 0 ? Number(data.currency.usdRate) : 7.1;
-				return currency === "CNY" ? cny : cny / rate;
+				return currency === "CNY" ? cny : cny / usdRate;
 			};
 			const models = data !== null && Array.isArray(data.models) ? data.models : [];
 			const otherColor = data !== null && typeof data.otherModelColor === "string" ? data.otherModelColor : "#868e96";
@@ -2509,9 +2181,20 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 				.filter((model) => model.priceLevel === "unpriced")
 				.reduce((sum, model) => sum + (Number(model.tokens) || 0), 0);
 			const loading = data === null && overview.status !== "error";
+			// A refetch keeps the previous payload on screen; the progress bar stays
+			// up until both chunks have answered for the new window.
+			const busy = overview.status === "refreshing" || heavy.status === "refreshing";
+			const heavyData = heavy.data;
+			const heavyState = heavy.status === "error" ? "error" : heavyData === null || heavyData === undefined ? "loading" : "ready";
+			const heatmap = arrayOf(heavyData, "heatmap");
+			const toolBoard = arrayOf(heavyData, "toolLeaderboard");
+			const commandBoard = arrayOf(heavyData, "commandLeaderboard");
+			const skillBoard = arrayOf(heavyData, "skillLeaderboard");
+			const sessions = arrayOf(heavyData, "sessions");
 			return h(
 				"div",
-				{ className: "ssp-root", "data-testid": "session-stats-page", "data-loading": loading ? "true" : "false" },
+				{ className: "ssp-root", "data-testid": "session-stats-page", "data-loading": loading ? "true" : "false", "data-busy": busy ? "true" : "false" },
+				h(ProgressBar, { t, active: busy }),
 				h(
 					"div",
 					{ className: "ssp-page" },
@@ -2567,7 +2250,6 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 									t("currency.usd"),
 								),
 							),
-							h(ModeToggle, { t, mode, onModeChange }),
 						),
 					),
 					overview.error === null
@@ -2586,6 +2268,9 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 									t("state.retry"),
 								),
 							),
+					heavy.error !== null
+						? h("div", { className: "ssp-hint", role: "status" }, t("state.heavyStale", { message: heavy.error }))
+						: null,
 					h(
 						"section",
 						{ className: "ssp-cards", "aria-label": t("cards.aria") },
@@ -2640,6 +2325,7 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 									: t("card.cache.sub", { cacheRead: formatTokens(totals.cacheRead) }),
 						}),
 					),
+					h(TodayBar, { t, data, currency, symbol, usdRate, placeholder }),
 					h(LiveCard, { t, live, placeholder }),
 					h(
 						"section",
@@ -2655,6 +2341,8 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 							otherLabel,
 							otherColor,
 							limit: 6,
+							granularity: data !== null && data.window ? data.window.granularity : null,
+							usdRate,
 						}),
 						h(DonutCard, {
 							t,
@@ -2681,43 +2369,31 @@ body[data-ds-dark-theme] .ssp-term{--up:#FF4D4F;--down:#00C08B;--gold:#F2C14E;--
 						unpricedCount: unpricedModels,
 						unpricedTokenTotal: unpricedTokens,
 					}),
+					h(HeatmapCard, { t, heatmap, state: heavyState }),
+					h(
+						"section",
+						{ className: "ssp-row" },
+						h(LeaderboardCard, { t, title: t("rank.tools"), sub: t("rank.sub.tools"), entries: toolBoard, nameKey: "name", state: heavyState, rich: true }),
+						h(LeaderboardCard, { t, title: t("rank.commands"), sub: t("rank.sub.commands"), entries: commandBoard, nameKey: "program", state: heavyState }),
+						h(LeaderboardCard, { t, title: t("rank.skills"), sub: t("rank.sub.skills"), entries: skillBoard, nameKey: "name", state: heavyState }),
+					),
+					h(SessionListCard, {
+						t,
+						sessions,
+						state: heavyState,
+						generatedAt: heavyData !== null ? heavyData.generatedAt : 0,
+						currency,
+						symbol,
+						rate: usdRate,
+					}),
 				),
 			);
 		}
 		//#endregion
 
-		/** Small `统计 | K线` switch, styled exactly like the currency toggle. */
-		function ModeToggle({ t, mode, onModeChange }) {
-			return h(
-				"div",
-				{ className: "ssp-view-toggle", role: "group", "aria-label": t("mode.aria") },
-				h("button", { type: "button", className: `ssp-view-btn${mode === "terminal" ? "" : " ssp-view-active"}`, onClick: () => onModeChange("stats"), "aria-pressed": mode === "terminal" ? "false" : "true" }, t("mode.stats")),
-				h("button", { type: "button", className: `ssp-view-btn${mode === "terminal" ? " ssp-view-active" : ""}`, onClick: () => onModeChange("terminal"), "aria-pressed": mode === "terminal" ? "true" : "false" }, t("mode.terminal")),
-			);
-		}
-
-		/**
-		 * Panel entry. The original stats layout stays the primary view; the K-line
-		 * terminal is an optional skin one tap away, remembered like a theme choice.
-		 */
+		/** Panel entry: the stats layout is the panel's only view. */
 		function SessionStatsPage(props) {
-			const [mode, setMode] = react.useState(() => {
-				try {
-					return window.localStorage.getItem("dsh-session-stats:mode") === "terminal" ? "terminal" : "stats";
-				} catch {
-					return "stats";
-				}
-			});
-			const changeMode = (next) => {
-				setMode(next);
-				try {
-					window.localStorage.setItem("dsh-session-stats:mode", next);
-				} catch {
-					// storage unavailable — the switch still works for this session
-				}
-			};
-			const View = mode === "terminal" ? TerminalView : StatsView;
-			return h(View, { ...props, mode, onModeChange: changeMode });
+			return h(StatsView, props);
 		}
 
 		//#region plugin
