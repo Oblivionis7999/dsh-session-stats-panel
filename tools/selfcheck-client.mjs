@@ -403,7 +403,7 @@ const SAMPLE_OVERVIEW = {
     { provider: "opencode-go", model: "claude-opus-4.1", route: "opencode-go/claude-opus-4.1", label: "claude-opus-4.1", color: PALETTE[2], tokens: 44900000, costCNY: 0, costUSD: 0, share: 0.059, vendor: "anthropic", priceLevel: "unpriced" },
   ],
   otherModelColor: OTHER_COLOR,
-  pricing: { tableVersion: "vendor-official-2026-11" },
+  pricing: { tableVersion: "vendor-official-2026-11-16" },
   daily: ["10/28", "10/29", "10/30", "10/31", "11/1", "11/2", "11/3"].map((label, index) => ({
     key: `d${index}`,
     label,
@@ -1280,6 +1280,77 @@ check(
     assert.equal(findNodes(full.tree, (node) => String(node.props.className ?? "").split(" ").includes("ssp-hint")).length, 0);
   },
   "hint only",
+);
+
+check(
+  "a partial scan is surfaced instead of silently lowering the totals",
+  () => {
+    // The host reports reads that threw; without the hint the cards would look
+    // complete while missing whole sessions (AUDIT #2).
+    const partial = renderPage({
+      overview: { ...SAMPLE_OVERVIEW, scan: { failed: 3, skipped: 2, sessionsTotal: 40 } },
+      live: SAMPLE_LIVE,
+      heavy: SAMPLE_HEAVY,
+    });
+    const hints = findNodes(partial.tree, (node) => String(node.props.className ?? "").split(" ").includes("ssp-hint"));
+    assert.equal(hints.length, 1, "one quiet hint");
+    assert.ok(partial.text.some((value) => value.includes("3 个活跃会话读取失败")), "hint names the failed count");
+    assert.ok(partial.text.some((value) => value.includes("40")), "hint names the listed total");
+    // A clean scan keeps the hint off screen.
+    assert.equal(findNodes(full.tree, (node) => String(node.props.className ?? "").split(" ").includes("ssp-hint")).length, 0);
+  },
+  "partial hint",
+);
+
+check(
+  "the search cost is never folded into the other-model bucket (AUDIT #3)",
+  () => {
+    // 11 priced models + the synthetic search row: the search row has its own
+    // table line, so the "other" bucket must not carry its cost as well.
+    const priced = Array.from({ length: 11 }, (_, index) => ({
+      provider: "opencode-go",
+      model: `model-${index}`,
+      route: `opencode-go/model-${index}`,
+      label: `model-${index}`,
+      color: PALETTE[index % PALETTE.length],
+      tokens: 1000 - index * 10,
+      costCNY: 10,
+      costUSD: 10 / 7.1,
+      vendor: "deepseek",
+      priceLevel: "official",
+    }));
+    const search = {
+      provider: "deepseek",
+      model: "official-search",
+      route: "deepseek/official-search",
+      label: "官方搜索",
+      color: OTHER_COLOR,
+      tokens: 0,
+      costCNY: 0.52,
+      costUSD: 0.52 / 7.1,
+      searches: 104,
+      costsOnly: true,
+      vendor: "deepseek",
+      priceLevel: "official",
+    };
+    const series = moduleExports.buildModelSeries([...priced, search], { limit: 10, otherLabel: "其他", otherColor: OTHER_COLOR, total: priced.reduce((sum, model) => sum + model.tokens, 0) });
+    const other = series.find((entry) => entry.key === "__other");
+    assert.ok(other !== undefined, "the other bucket exists");
+    assert.equal(other.costCNY, 10, "the other bucket bills the 11th model only");
+    assert.equal(other.costUSD, 10 / 7.1, "USD follows CNY");
+    assert.equal(other.routes.includes("deepseek/official-search"), false, "the search route stays out");
+    assert.equal(other.routes.length, 1, "one tail model");
+    // The rendered table still gives the search row its own line, once.
+    const page = renderPage({
+      overview: { ...SAMPLE_OVERVIEW, models: [...priced, search] },
+      live: SAMPLE_LIVE,
+      heavy: SAMPLE_HEAVY,
+    });
+    const detail = findNodes(page.tree, (node) => String(node.props.className ?? "").split(" ").includes("ssp-models"))[0];
+    const searchRows = findNodes(detail, (node) => String(node.props.className ?? "").split(" ").includes("ssp-model-row-search"));
+    assert.equal(searchRows.length, 1, "exactly one search line");
+  },
+  "other cost=¥10 (search excluded)",
 );
 
 // Report

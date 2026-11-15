@@ -10,7 +10,7 @@
   <p><b>Zero third-party dependencies</b> · charts are hand-written SVG · reads your local session log, uploads nothing</p>
 
   <p>
-    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.1-12b886" alt="Version"></a>
+    <a href="https://www.npmjs.com/package/dsh-session-stats-panel"><img src="https://img.shields.io/badge/version-3.1.2-12b886" alt="Version"></a>
     <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.5-12b886" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="License"></a>
     <a href="https://github.com/Oblivionis7999/dsh-session-stats-panel/stargazers"><img src="https://img.shields.io/github/stars/Oblivionis7999/dsh-session-stats-panel?color=12b886" alt="Stars"></a>

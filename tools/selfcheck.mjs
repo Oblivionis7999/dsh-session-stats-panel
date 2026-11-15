@@ -48,6 +48,7 @@ import {
   computeForecast,
   dayIndexOf,
   hourIndexOf,
+  isWindowKey,
   pruneSessionAggregate,
   resolveWindow,
   summarizeSessionEvents,
@@ -141,7 +142,61 @@ const overview = buildOverview([aggregate], { windowKey: "7d", now: NOW, pricing
 // ---------------------------------------------------------------------------
 // Pricing rules
 // ---------------------------------------------------------------------------
-check("price table version", () => assert.equal(PRICE_TABLE_VERSION, "vendor-official-2026-11"), PRICE_TABLE_VERSION);
+check("price table version", () => assert.equal(PRICE_TABLE_VERSION, "vendor-official-2026-11-16"), PRICE_TABLE_VERSION);
+
+check(
+  "2026-11-16 refresh: Astra and the newer Claude lists are priced",
+  () => {
+    // AUDIT of the price gaps: gpt-6-astra used to be "unpriced" on both of the
+    // user's routes (naapi-gpt and the Codex subscription), which zeroed cost.
+    const astra = priceForRoute("naapi-gpt/gpt-6-astra");
+    assert.ok(astra !== null, "astra must be priced");
+    assert.equal(astra.key, "gpt-6-astra");
+    assert.equal(astra.vendor, "openai");
+    assert.equal(astra.currency, "USD");
+    assert.equal(astra.input, 10);
+    assert.equal(astra.output, 50);
+    assert.equal(astra.cacheRead, 1);
+    assert.equal(astra.cacheWrite, 12.5);
+    assert.equal(priceForRoute("codex-chatgpt/gpt-6-astra").key, "gpt-6-astra", "both routes share the row");
+    assert.equal(priceForRoute("naapi-gpt/gpt-6-astra-law").key, "gpt-6-astra", "law promo shares the list");
+
+    // Newer Claude generations, exact ids.
+    const expected = {
+      "claude-fable-5-2": [8, 40, 0.2, 10],
+      "claude-mythos-5-2": [8, 40, 0.2, 10],
+      "claude-mythos-5-1": [10, 50, 0.25, 12.5],
+      "claude-fable-5": [10, 50, 1, 12.5],
+      "claude-mythos-5": [10, 50, 1, 12.5],
+      "claude-opus-5": [5, 25, 0.5, 6.25],
+      "claude-opus-4-8": [5, 25, 0.5, 6.25],
+      "claude-opus-4-7": [5, 25, 0.5, 6.25],
+      "claude-opus-4-6": [5, 25, 0.5, 6.25],
+      "claude-opus-4-5": [5, 25, 0.5, 6.25],
+      "claude-sonnet-5": [2, 10, 0.2, 2.5],
+      "claude-haiku-4-5": [1, 5, 0.1, 1.25],
+    };
+    for (const [key, [input, output, cacheRead, cacheWrite]] of Object.entries(expected)) {
+      const row = priceForRoute(`naapi-claude/${key}`);
+      assert.ok(row !== null, `${key} must be priced`);
+      assert.equal(row.key, key, `${key}: wrong row`);
+      assert.equal(row.vendor, "anthropic");
+      assert.equal(row.input, input, `${key}: input`);
+      assert.equal(row.output, output, `${key}: output`);
+      assert.equal(row.cacheRead, cacheRead, `${key}: cache read`);
+      assert.equal(row.cacheWrite, cacheWrite, `${key}: cache write (5m tier)`);
+    }
+
+    // Generation-specific matchers must not collapse into a shorter sibling:
+    // a suffixed route is the case where the matcher list decides the price.
+    assert.equal(priceForRoute("naapi-claude/claude-opus-5-20260101").key, "claude-opus-5", "Opus 5 ≠ Opus 5.5 price");
+    assert.equal(priceForRoute("naapi-claude/claude-opus-5-5").key, "claude-opus-5-5");
+    assert.equal(priceForRoute("naapi-claude/claude-haiku-4-5-preview").key, "claude-haiku-4-5", "Haiku 4.5 ≠ 5.5");
+    assert.equal(priceForRoute("naapi-claude/claude-sonnet-5").key, "claude-sonnet-5");
+    assert.equal(priceForRoute("naapi-claude/claude-fable-5-2").key, "claude-fable-5-2", "Fable 5.2 ≠ 5.1");
+  },
+  "astra + 12 Claude rows",
+);
 
 check(
   "route matching: vendor-official lists only, unknown → unpriced",
@@ -177,6 +232,10 @@ check(
     assert.equal(priceForRoute("opencode-go/hy3").vendor, "tencent");
     assert.equal(priceForRoute("opencode-go/hy3").currency, "CNY");
     assert.equal(priceForRoute("opencode-go/hy4-preview").key, "hy4-preview");
+    // Operator-confirmed: `hy4free` is hy4 itself, not a free tier — the vendor
+    // publishes a single Hy4 list, so every variant is priced by it.
+    assert.equal(priceForRoute("workbuddy-subscription/hy4free").key, "hy4-preview", "hy4free is hy4");
+    assert.equal(priceForRoute("workbuddy-subscription/hy4").key, "hy4-preview");
     // Google Gemini and Meta Muse (USD).
     assert.equal(priceForRoute("opencode-go/gemini-4-argon").vendor, "google");
     assert.equal(priceForRoute("opencode-go/gemini-4-argon-contributor").key, "gemini-4-argon");
@@ -740,6 +799,29 @@ check(
     assert.equal(fallback.window.key, "7d");
   },
   "fallback=7d",
+);
+
+check(
+  "inherited object keys are not windows (AUDIT #1)",
+  () => {
+    for (const key of ["__proto__", "constructor", "toString", "hasOwnProperty", "valueOf"]) {
+      const overview = buildOverview([aggregate], { windowKey: key, now: NOW, pricing });
+      assert.equal(overview.window.key, "7d", `${key}: overview must fall back to 7d`);
+      assert.equal(overview.window.granularity, "day", `${key}: must stay a day window`);
+      assert.equal(overview.daily.length, 7, `${key}: must keep 7 buckets`);
+      const resolved = resolveWindow(key, NOW);
+      assert.equal(resolved.key, "7d", `${key}: resolveWindow must fall back`);
+      assert.equal(resolved.buckets.length, 7, `${key}: resolveWindow must keep 7 buckets`);
+      assert.equal(normalizeConfig({ window: key }).window, "7d", `${key}: config must reject it`);
+      assert.equal(isWindowKey(key), false, `${key}: isWindowKey must say no`);
+    }
+    assert.equal(isWindowKey("7d"), true, "a real key still passes");
+    // Same class of bug in the price table's exact lookup.
+    assert.equal(priceForRoute("__proto__"), null, "__proto__ needs no price row");
+    assert.equal(priceForRoute("constructor"), null, "constructor needs no price row");
+    assert.equal(priceForRoute("toString"), null, "toString needs no price row");
+  },
+  "5 inherited keys -> 7d, price table null",
 );
 
 check(

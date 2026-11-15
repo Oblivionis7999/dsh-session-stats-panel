@@ -403,6 +403,7 @@ body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2
 			"state.loading": "加载中",
 			"state.emptyChunk": "数据暂不可用",
 			"state.heavyStale": "慢数据刷新失败：{message} · 卡片显示的是上一次结果",
+			"state.partial": "{failed} 个活跃会话读取失败，暂未计入（共 {total} 个），总量偏低",
 			"today.title": "今日概览",
 			"today.sub": "按自然日 · 对比昨日",
 			"today.delta": "{arrow} {value}",
@@ -544,6 +545,7 @@ body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2
 			"state.loading": "Loading",
 			"state.emptyChunk": "Data unavailable",
 			"state.heavyStale": "Slow data refresh failed: {message} · cards still show the previous result",
+			"state.partial": "{failed} active sessions could not be read and are not counted (of {total}); totals are low",
 			"today.title": "Today",
 			"today.sub": "Calendar day · vs yesterday",
 			"today.delta": "{arrow} {value}",
@@ -1193,8 +1195,12 @@ body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2
 			const otherColor = options?.otherColor ?? "#868e96";
 			const total = Number(options?.total) || 0;
 			const list = Array.isArray(models) ? models : [];
-			const head = list.slice(0, limit);
-			const rest = list.slice(limit);
+			// The synthetic official-search row carries no tokens and is billed per
+			// request. It gets its own table row, so folding it into the "other"
+			// bucket would bill its cost twice (AUDIT #3).
+			const tokenModels = list.filter((model) => model.costsOnly !== true);
+			const head = tokenModels.slice(0, limit);
+			const rest = tokenModels.slice(limit);
 			const toSeries = (model) => ({
 				key: String(model.route ?? model.model ?? ""),
 				label: model.label || model.model || model.route || "",
@@ -2180,6 +2186,10 @@ body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2
 			const unpricedTokens = models
 				.filter((model) => model.priceLevel === "unpriced")
 				.reduce((sum, model) => sum + (Number(model.tokens) || 0), 0);
+			// Reads that threw during the scan: the totals below them are low, and
+			// saying so is the whole point of the scan block (AUDIT #2).
+			const scan = data !== null && data.scan ? data.scan : null;
+			const failedSessions = scan === null ? 0 : Number(scan.failed) || 0;
 			const loading = data === null && overview.status !== "error";
 			// A refetch keeps the previous payload on screen; the progress bar stays
 			// up until both chunks have answered for the new window.
@@ -2268,6 +2278,13 @@ body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2
 									t("state.retry"),
 								),
 							),
+					failedSessions > 0
+						? h(
+								"div",
+								{ className: "ssp-hint", role: "status" },
+								t("state.partial", { failed: failedSessions, total: Number(scan?.sessionsTotal) || 0 }),
+							)
+						: null,
 					heavy.error !== null
 						? h("div", { className: "ssp-hint", role: "status" }, t("state.heavyStale", { message: heavy.error }))
 						: null,
@@ -2428,6 +2445,9 @@ body[data-ds-dark-theme] .ssp-rate-warn{background:rgba(242,193,78,.2);color:#f2
 
 		exports.apply = apply;
 		exports.inject = inject;
+		// Test seam: bucketing is pure, and the double-billing regression
+		// (AUDIT #3) is only observable on the series it returns.
+		exports.buildModelSeries = buildModelSeries;
 		return module.exports;
 	},
 });

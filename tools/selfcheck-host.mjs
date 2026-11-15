@@ -488,6 +488,33 @@ check(
   "fallback=7d",
 );
 
+// AUDIT #1: `WINDOWS[key]` used to resolve inherited names, so `__proto__` was
+// accepted as a window and produced an empty payload (daily: [], tokens: 0)
+// while `/heavy` still returned real data. Every inherited key must now fall
+// back to the default window and match the plain fallback payload exactly.
+const inheritedWindowResponses = [];
+for (const key of ["__proto__", "constructor", "toString"]) {
+  inheritedWindowResponses.push({
+    key,
+    response: await callRoute(overviewRoute, { url: `${OVERVIEW_PATH}?window=${key}` }),
+  });
+}
+check(
+  "overview: inherited keys are not windows (AUDIT #1)",
+  () => {
+    const expected = bodyOf(fallbackResponse);
+    for (const { key, response } of inheritedWindowResponses) {
+      const body = bodyOf(response);
+      assert.equal(response.statusCode, 200, `${key}: status`);
+      assert.equal(body.window.key, "7d", `${key}: must fall back to 7d`);
+      assert.equal(body.daily.length, 7, `${key}: must keep 7 day buckets`);
+      assert.equal(body.totals.tokens, expected.totals.tokens, `${key}: totals must not be zeroed`);
+      assert.equal(body.totals.sessions, expected.totals.sessions, `${key}: sessions must match the fallback`);
+    }
+  },
+  "3 inherited keys = 7d payload",
+);
+
 // ---------------------------------------------------------------------------
 // Heavy handler: chunked leaderboards / session list / heatmap
 // ---------------------------------------------------------------------------
@@ -702,6 +729,34 @@ check(
   "500 heavy_failed",
 );
 for (const dispose of failureBoot.disposers) dispose();
+
+// ---------------------------------------------------------------------------
+// Partial scan: a read that throws must be visible, not silently dropped
+// ---------------------------------------------------------------------------
+const partialBoot = createFakeContext();
+const partialReadSession = partialBoot.ctx.sessionQuery.readSession;
+let partialReadAttempts = 0;
+partialBoot.ctx.sessionQuery.readSession = async (id) => {
+  partialReadAttempts += 1;
+  if (partialReadAttempts === 1) throw new Error("session locked");
+  return partialReadSession(id);
+};
+apply(partialBoot.ctx, { ttlMs: 0, usdRate: 7.1 });
+const partialOverview = bodyOf(
+  await callRoute(partialBoot.routes.find((route) => route.path === OVERVIEW_PATH), { url: `${OVERVIEW_PATH}?window=7d` }),
+);
+check(
+  "overview: a failed session read is reported as scan.failed (AUDIT #2)",
+  () => {
+    assert.equal(partialOverview.scan.failed, 1, "one read failed");
+    assert.equal(partialOverview.scan.skipped, 1, "nothing was cached, so it is skipped too");
+    assert.equal(partialOverview.scan.sessionsTotal, 2, "both sessions are still listed");
+    assert.equal(partialOverview.scan.sessionsScanned, 1, "only one reached the totals");
+    assert.equal(partialOverview.totals.sessions, 1, "the readable session is the only one counted");
+  },
+  `failed=1 skipped=1 scanned=1/2`,
+);
+for (const dispose of partialBoot.disposers) dispose();
 
 // ---------------------------------------------------------------------------
 // Fork dedupe: `inheritedEventCount` prefixes must not be counted again

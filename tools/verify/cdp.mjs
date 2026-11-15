@@ -295,9 +295,38 @@ function ensureDir(dir) {
 	fs.mkdirSync(dir, { recursive: true });
 }
 
+/** Query parameters that carry credentials into a local DSH session. */
+const SECRET_QUERY_PARAMS = ["token", "key", "secret", "password", "auth", "apikey", "api_key"];
+
+/**
+ * Redact credential-bearing query parameters before a URL reaches disk.
+ *
+ * The DSH web UI carries its whole-session token in `?token=`; this file lives
+ * inside the repo directory, so one token here is enough to drive the local GUI
+ * (AUDIT #4). Only `id` is ever read back, so redacting the URL costs nothing.
+ *
+ * @param {string} value - URL as opened.
+ * @returns {string} the same URL with secret parameter values replaced.
+ */
+function sanitizeUrl(value) {
+	const text = String(value ?? "");
+	if (text === "") return text;
+	let parsed;
+	try {
+		parsed = new URL(text);
+	} catch {
+		// Not a parseable absolute URL: fall back to a conservative regex pass.
+		return text.replace(/([?&](?:token|key|secret|password|auth|api[_-]?key)=)[^&#]*/gi, "$1REDACTED");
+	}
+	for (const name of SECRET_QUERY_PARAMS) {
+		if (parsed.searchParams.has(name)) parsed.searchParams.set(name, "REDACTED");
+	}
+	return parsed.toString();
+}
+
 function writeLastTarget(info) {
 	ensureDir(STATE_DIR);
-	fs.writeFileSync(lastTargetPath(), JSON.stringify(info, null, 2));
+	fs.writeFileSync(lastTargetPath(), JSON.stringify({ ...info, url: sanitizeUrl(info?.url) }, null, 2));
 }
 
 function readLastTarget() {
@@ -1284,4 +1313,10 @@ async function main() {
 	}
 }
 
-await main();
+export { sanitizeUrl };
+
+// Only run the CLI when this file is the entry point, so the redaction helper
+// can be imported and exercised directly.
+const invokedDirectly =
+	process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) await main();

@@ -1,6 +1,6 @@
 # 价目与计费口径
 
-> 价目版本：`vendor-official-2026-11` · 抓取日期 2026-11-04 · 金额单位：**百万（1,000,000）tokens**
+> 价目版本：`vendor-official-2026-11-16` · 抓取日期 2026-11-04，2026-11-16 复核 OpenAI / Anthropic / DeepSeek 官网 · 金额单位：**百万（1,000,000）tokens**
 > 本文与 `lib/pricing.js` 的 `OFFICIAL_PRICE_TABLE` 一一对应；改价时两边一起改，并重跑 `node tools/selfcheck.mjs`。
 
 ## 只认「原厂官方价目」
@@ -96,7 +96,7 @@
 | 模型 | 价目键 | 缓存命中 | 缓存写入 | 未命中输入 | 输出 |
 | --- | --- | --- | --- | --- | --- |
 | Hy3 | `hy3` | 0.25 | 1 | 1 | 4 |
-| Hy4 preview | `hy4-preview` | 0.3 | 6 | 6 | 18 |
+| Hy4（`hy4` / `hy4free` / `hy4-preview` 同一份刊例） | `hy4-preview` | 0.3 | 6 | 6 | 18 |
 
 <sub>来源：<https://cloud.tencent.com/document/product/1759/127342></sub>
 
@@ -152,6 +152,7 @@
 
 | 模型 | 价目键 | 缓存命中 | 缓存写入 | 未命中输入 | 输出 |
 | --- | --- | --- | --- | --- | --- |
+| GPT-6 Astra | `gpt-6-astra` | 1 | 12.5 | 10 | 50 |
 | GPT-6 Luna | `gpt-6-luna` | 0.01 | 0.125 | 0.1 | 0.5 |
 | GPT-5.6 Luna | `gpt-5.6-luna` | 0.02 | 0.25 | 0.2 | 1.2 |
 | GPT-6.1 Sol | `gpt-6.1-sol` | 0.1 | 2.5 | 2 | 10 |
@@ -175,10 +176,24 @@
 
 | 模型 | 价目键 | 缓存命中 | 缓存写入 | 未命中输入 | 输出 |
 | --- | --- | --- | --- | --- | --- |
+| Claude Fable 5.2 | `claude-fable-5-2` | 0.2 | 10 | 8 | 40 |
+| Claude Mythos 5.2 | `claude-mythos-5-2` | 0.2 | 10 | 8 | 40 |
+| Claude Mythos 5.1 | `claude-mythos-5-1` | 0.25 | 12.5 | 10 | 50 |
 | Claude Fable 5.1 | `claude-fable-5-1` | 0.25 | 12.5 | 10 | 50 |
+| Claude Fable 5 | `claude-fable-5` | 1 | 12.5 | 10 | 50 |
+| Claude Mythos 5 | `claude-mythos-5` | 1 | 12.5 | 10 | 50 |
 | Claude Opus 5.5 | `claude-opus-5-5` | 0.2 | 5 | 4 | 20 |
+| Claude Opus 5 | `claude-opus-5` | 0.5 | 6.25 | 5 | 25 |
+| Claude Opus 4.8 | `claude-opus-4-8` | 0.5 | 6.25 | 5 | 25 |
+| Claude Opus 4.7 | `claude-opus-4-7` | 0.5 | 6.25 | 5 | 25 |
+| Claude Opus 4.6 | `claude-opus-4-6` | 0.5 | 6.25 | 5 | 25 |
+| Claude Opus 4.5 | `claude-opus-4-5` | 0.5 | 6.25 | 5 | 25 |
 | Claude Sonnet 5.5 | `claude-sonnet-5-5` | 0.1 | 2.5 | 2 | 10 |
+| Claude Sonnet 5 | `claude-sonnet-5` | 0.2 | 2.5 | 2 | 10 |
 | Claude Haiku 5.5 | `claude-haiku-5-5` | 0.01 | 0.125 | 0.1 | 0.5 |
+| Claude Haiku 4.5 | `claude-haiku-4-5` | 0.1 | 1.25 | 1 | 5 |
+
+<sub>Mythos 系列为限额开放（需通过 Anthropic 验证计划），价目与同代号 Fable 相同。</sub>
 
 <sub>来源：<https://platform.claude.com/docs/en/about-claude/pricing></sub>
 

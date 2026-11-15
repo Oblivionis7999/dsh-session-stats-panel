@@ -73,7 +73,7 @@ GET /session-stats/api/overview?window=7d
               "cacheHitRate": 0.99556, "sessions": 22, "avgTokensPerSession": 34768182,
               "pricedTokens": 714900000, "unpricedTokens": 50000000, "priced": false,
               "unpricedModels": 1, "events": 1234 },
-  "pricing": { "tableVersion": "vendor-official-2026-11", "peakMultiplier": 2,
+  "pricing": { "tableVersion": "vendor-official-2026-11-16", "peakMultiplier": 2,
                "peakEvents": 10, "offPeakEvents": 4, "mode": "mixed",
                "holidays": [], "makeupWorkdays": [], "holidaySource": "国办发明电〔2025〕7号",
                "usdRate": 7.1, "fallbackTier": "deepseek-flash",
